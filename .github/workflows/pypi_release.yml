@@ -1,3 +1,5 @@
+name: Pypi Release
+
 on:
   push:
     tags:
@@ -26,7 +28,7 @@ jobs:
           python -m build
           make venv
           make api
-          twine check --strict dist/Kurigram*
+          twine check --strict dist/embygram*
       - name: Publish distribution to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
