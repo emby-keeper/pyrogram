@@ -36,6 +36,7 @@ class SendMessage:
         link_preview_options: "types.LinkPreviewOptions" = None,
         disable_notification: bool = None,
         message_thread_id: int = None,
+        direct_messages_chat_topic_id: int = None,
         effect_id: int = None,
         show_caption_above_media: bool = None,
         reply_parameters: "types.ReplyParameters" = None,
@@ -88,14 +89,15 @@ class SendMessage:
 
             message_thread_id (``int``, *optional*):
                 Unique identifier for the target message thread (topic) of the forum.
-                For supergroups only.
+                For forums only.
+
+            direct_messages_chat_topic_id (``int``, *optional*):
+                Unique identifier of the topic in a channel direct messages chat administered by the current user.
+                For directs only only.
 
             effect_id (``int``, *optional*):
                 Unique identifier of the message effect.
                 For private chats only.
-
-            show_caption_above_media (``bool``, *optional*):
-                Pass True, if the caption must be shown above the message media.
 
             reply_parameters (:obj:`~pyrogram.types.ReplyParameters`, *optional*):
                 Describes reply parameters for the message that is being sent.
@@ -132,8 +134,10 @@ class SendMessage:
                 await app.send_message("me", "Message sent with **Pyrogram**!")
 
                 # Disable web page previews
+                from pyrogram import types
+
                 await app.send_message("me", "https://docs.pyrogram.org",
-                    disable_web_page_preview=True)
+                    link_preview_options=types.LinkPreviewOptions(is_disabled=True))
 
                 # Reply to a message using its id
                 await app.send_message("me", "this is a reply", reply_to_message_id=123)
@@ -159,6 +163,8 @@ class SendMessage:
                             [InlineKeyboardButton("Docs", url="https://docs.pyrogram.org")]
                         ]))
         """
+        link_preview_options = link_preview_options or self.link_preview_options
+
         if any(
             (
                 reply_to_message_id is not None,
@@ -209,11 +215,27 @@ class SendMessage:
                 quote_position=quote_offset
             )
 
-        if disable_web_page_preview is not None:
-            log.warning(
-                "`disable_web_page_preview` is deprecated and will be removed in future updates. Use `link_preview_options` instead."
+
+        if any(
+            (
+                disable_web_page_preview is not None,
+                show_caption_above_media is not None,
             )
-            link_preview_options = types.LinkPreviewOptions(is_disabled=disable_web_page_preview)
+        ):
+            if disable_web_page_preview is not None:
+                log.warning(
+                    "`disable_web_page_preview` is deprecated and will be removed in future updates. Use `link_preview_options` instead."
+                )
+
+            if show_caption_above_media is not None:
+                log.warning(
+                    "`show_caption_above_media` is deprecated and will be removed in future updates. Use `link_preview_options` instead."
+                )
+
+            link_preview_options = types.LinkPreviewOptions(
+                is_disabled=disable_web_page_preview,
+                show_above_text=show_caption_above_media
+            )
 
         message, entities = (await utils.parse_text_entities(self, text, parse_mode, entities)).values()
 
@@ -223,11 +245,12 @@ class SendMessage:
                 peer=peer,
                 no_webpage=getattr(link_preview_options, "is_disabled", None) or None,
                 silent=disable_notification or None,
-                invert_media=show_caption_above_media or None,
+                invert_media=getattr(link_preview_options, "show_above_text", None),
                 reply_to=await utils.get_reply_to(
                     self,
                     reply_parameters,
-                    message_thread_id
+                    message_thread_id,
+                    direct_messages_chat_topic_id
                 ),
                 random_id=self.rnd_id(),
                 schedule_date=utils.datetime_to_timestamp(schedule_date),
@@ -269,15 +292,6 @@ class SendMessage:
                 client=self
             )
 
-        for i in r.updates:
-            if isinstance(i, (raw.types.UpdateNewMessage,
-                              raw.types.UpdateNewChannelMessage,
-                              raw.types.UpdateNewScheduledMessage,
-                              raw.types.UpdateBotNewBusinessMessage)):
-                return await types.Message._parse(
-                    self, i.message,
-                    {i.id: i for i in r.users},
-                    {i.id: i for i in r.chats},
-                    is_scheduled=isinstance(i, raw.types.UpdateNewScheduledMessage),
-                    business_connection_id=getattr(i, "connection_id", None)
-                )
+        messages = await utils.parse_messages(client=self, messages=r)
+
+        return messages[0] if messages else None

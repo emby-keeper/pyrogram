@@ -29,12 +29,20 @@ from pyrogram import raw
 from pyrogram.connection import Connection
 from pyrogram.crypto import mtproto
 from pyrogram.errors import (
-    RPCError, InternalServerError, AuthKeyDuplicated, FloodWait, FloodPremiumWait, ServiceUnavailable, BadMsgNotification,
-    SecurityCheckMismatch, Unauthorized
+    AuthKeyDuplicated,
+    BadMsgNotification,
+    FloodPremiumWait,
+    FloodWait,
+    InternalServerError,
+    RPCError,
+    SecurityCheckMismatch,
+    ServiceUnavailable,
+    Unauthorized,
 )
 from pyrogram.raw.all import layer
-from pyrogram.raw.core import TLObject, MsgContainer, Int, FutureSalts
-from .internals import MsgId, MsgFactory
+from pyrogram.raw.core import FutureSalts, Int, MsgContainer, TLObject
+
+from .internals import MsgFactory, MsgId
 
 log = logging.getLogger(__name__)
 
@@ -97,6 +105,7 @@ class Session:
         self.recv_task = None
 
         self.is_started = asyncio.Event()
+        self.restart_event = asyncio.Event()
 
     async def start(self):
         while True:
@@ -138,7 +147,7 @@ class Session:
 
                 self.ping_task = self.client.loop.create_task(self.ping_worker())
 
-                log.info("Session initialized: Layer %s", layer)
+                log.info("Session initialized: Pyrogram v%s (Layer %s)", pyrogram.__version__, layer)
                 log.info("Device: %s - %s", self.client.device_model, self.client.app_version)
                 log.info("System: %s (%s)", self.client.system_version, self.client.lang_code)
             except (AuthKeyDuplicated, Unauthorized) as e:
@@ -159,7 +168,19 @@ class Session:
 
         log.info("Session started")
 
+        if callable(self.client.connect_handler):
+            try:
+                await self.client.connect_handler(self.client, self)
+            except Exception as e:
+                log.exception(e)
+
     async def stop(self):
+        if callable(self.client.disconnect_handler):
+            try:
+                await self.client.disconnect_handler(self.client, self)
+            except Exception as e:
+                log.exception(e)
+
         self.is_started.clear()
 
         self.stored_msg_ids.clear()
@@ -176,17 +197,13 @@ class Session:
         if self.recv_task:
             await self.recv_task
 
-        if not self.is_media and callable(self.client.disconnect_handler):
-            try:
-                await self.client.disconnect_handler(self.client)
-            except Exception as e:
-                log.exception(e)
-
         log.info("Session stopped")
 
     async def restart(self):
+        self.restart_event.set()
         await self.stop()
         await self.start()
+        self.restart_event.clear()
 
     async def handle_packet(self, packet):
         try:
@@ -426,6 +443,16 @@ class Session:
                     query_name, str(e) or repr(e)
                 )
 
+                # restart was never being called after Exception block
+                if not self.restart_event.is_set():
+                    self.loop.create_task(self.restart())
+                else:
+                    # multiple Exceptions can be raised in a row, so we need to wait for the restart to finish
+                    try:
+                        await asyncio.wait_for(self.restart_event.wait(), self.WAIT_TIMEOUT)
+                    except asyncio.TimeoutError:
+                        pass
+                    
                 await asyncio.sleep(0.5)
 
                 return await self.invoke(query, retries - 1, timeout)

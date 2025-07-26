@@ -25,12 +25,19 @@ from .chat_background import ChatBackground
 from .chat_boost import ChatBoost
 from .chat_theme import ChatTheme
 from .checked_gift_code import CheckedGiftCode
+from .checklist_task import ChecklistTask
+from .checklist_tasks_added import ChecklistTasksAdded
+from .checklist_tasks_done import ChecklistTasksDone
+from .checklist import Checklist
 from .contact_registered import ContactRegistered
 from .contact import Contact
 from .dice import Dice
+from .direct_message_price_changed import DirectMessagePriceChanged
+from .direct_topic import DirectMessagesTopic
 from .document import Document
 from .external_reply_info import ExternalReplyInfo
 from .fact_check import FactCheck
+from .formatted_text import FormattedText
 from .forum_topic import ForumTopic
 from .forum_topic_closed import ForumTopicClosed
 from .forum_topic_created import ForumTopicCreated
@@ -40,14 +47,17 @@ from .game import Game
 from .general_forum_topic_hidden import GeneralForumTopicHidden
 from .general_forum_topic_unhidden import GeneralForumTopicUnhidden
 from .gift_code import GiftCode
+from .gift_upgrade_preview import GiftUpgradePreview
 from .invoice import Invoice
 from .link_preview_options import LinkPreviewOptions
 from .giveaway import Giveaway
+from .input_checklist_task import InputChecklistTask
 from .giveaway_completed import GiveawayCompleted
 from .giveaway_created import GiveawayCreated
 from .giveaway_prize_stars import GiveawayPrizeStars
 from .giveaway_winners import GiveawayWinners
 from .location import Location
+from .mask_position import MaskPosition
 from .media_area import MediaArea
 from .message import Message
 from .message_entity import MessageEntity
@@ -61,9 +71,12 @@ from .message_reactions import MessageReactions
 from .my_boost import MyBoost
 from .paid_media_info import PaidMediaInfo
 from .paid_media_preview import PaidMediaPreview
-from .paid_messages_price import PaidMessagesPrice
+from .paid_messages_price_changed import PaidMessagesPriceChanged
 from .paid_messages_refunded import PaidMessagesRefunded
+from .paid_reactor import PaidReactor
 from .payment_form import PaymentForm
+from .payment_option import PaymentOption
+from .payment_result import PaymentResult
 from .photo import Photo
 from .poll import Poll
 from .proximity_alert_triggered import ProximityAlertTriggered
@@ -72,6 +85,7 @@ from .reaction import Reaction
 from .refunded_payment import RefundedPayment
 from .reply_parameters import ReplyParameters
 from .restriction_reason import RestrictionReason
+from .saved_credentials import SavedCredentials
 from .screenshot_taken import ScreenshotTaken
 from .gift_attribute import GiftAttribute
 from .gift import Gift
@@ -84,6 +98,10 @@ from .stripped_thumbnail import StrippedThumbnail
 from .successful_payment import SuccessfulPayment
 from .text_quote import TextQuote
 from .thumbnail import Thumbnail
+from .upgraded_gift_attribute_id_backdrop import UpgradedGiftAttributeIdBackdrop
+from .upgraded_gift_attribute_id_model import UpgradedGiftAttributeIdModel
+from .upgraded_gift_attribute_id_symbol import UpgradedGiftAttributeIdSymbol
+from .upgraded_gift_attribute_id import UpgradedGiftAttributeId
 from .venue import Venue
 from .video import Video
 from .video_note import VideoNote
@@ -102,12 +120,19 @@ __all__ = [
     "ChatBoost",
     "ChatTheme",
     "CheckedGiftCode",
+    "ChecklistTask",
+    "ChecklistTasksAdded",
+    "ChecklistTasksDone",
+    "Checklist",
     "ContactRegistered",
     "Contact",
     "Dice",
+    "DirectMessagePriceChanged",
+    "DirectMessagesTopic",
     "Document",
     "ExternalReplyInfo",
     "FactCheck",
+    "FormattedText",
     "ForumTopic",
     "ForumTopicClosed",
     "ForumTopicCreated",
@@ -117,7 +142,9 @@ __all__ = [
     "GeneralForumTopicHidden",
     "GeneralForumTopicUnhidden",
     "GiftCode",
+    "GiftUpgradePreview",
     "Giveaway",
+    "InputChecklistTask",
     "Invoice",
     "LinkPreviewOptions",
     "GiveawayCompleted",
@@ -125,6 +152,7 @@ __all__ = [
     "GiveawayPrizeStars",
     "GiveawayWinners",
     "Location",
+    "MaskPosition",
     "MediaArea",
     "Message",
     "MessageEntity",
@@ -138,9 +166,12 @@ __all__ = [
     "MyBoost",
     "PaidMediaInfo",
     "PaidMediaPreview",
-    "PaidMessagesPrice",
+    "PaidMessagesPriceChanged",
     "PaidMessagesRefunded",
+    "PaidReactor",
     "PaymentForm",
+    "PaymentOption",
+    "PaymentResult",
     "Photo",
     "Poll",
     "ProximityAlertTriggered",
@@ -149,6 +180,7 @@ __all__ = [
     "RefundedPayment",
     "ReplyParameters",
     "RestrictionReason",
+    "SavedCredentials",
     "ScreenshotTaken",
     "GiftAttribute",
     "Gift",
@@ -161,6 +193,10 @@ __all__ = [
     "SuccessfulPayment",
     "TextQuote",
     "Thumbnail",
+    "UpgradedGiftAttributeIdBackdrop",
+    "UpgradedGiftAttributeIdModel",
+    "UpgradedGiftAttributeIdSymbol",
+    "UpgradedGiftAttributeId",
     "Venue",
     "Video",
     "VideoNote",

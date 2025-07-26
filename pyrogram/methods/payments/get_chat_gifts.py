@@ -16,7 +16,7 @@
 #  You should have received a copy of the GNU Lesser General Public License
 #  along with Pyrogram.  If not, see <http://www.gnu.org/licenses/>.
 
-from typing import Optional, Union
+from typing import Optional, Union, AsyncGenerator
 
 import pyrogram
 from pyrogram import raw, types
@@ -31,10 +31,10 @@ class GetChatGifts:
         exclude_unlimited: Optional[bool] = None,
         exclude_limited: Optional[bool] = None,
         exclude_upgraded: Optional[bool] = None,
-        sort_by_value: Optional[bool] = None,
+        sort_by_price: Optional[bool] = None,
         limit: int = 0,
         offset: str = ""
-    ):
+    ) -> AsyncGenerator["types.Gift", None]:
         """Get all gifts owned by specified chat.
 
         .. include:: /_includes/usable-by/users.rst
@@ -46,28 +46,28 @@ class GetChatGifts:
                 For a contact that exists in your Telegram address book you can use his phone number (str).
 
             exclude_unsaved (``bool``, *optional*):
-                Exclude unsaved star gifts.
+                Pass True to exclude gifts that aren’t saved to the account’s profile page.
 
             exclude_saved (``bool``, *optional*):
-                Exclude saved star gifts.
+                Pass True to exclude gifts that are saved to the account’s profile page.
 
             exclude_unlimited (``bool``, *optional*):
-                Exclude unlimited star gifts.
+                Pass True to exclude gifts that can be purchased an unlimited number of times.
 
             exclude_limited (``bool``, *optional*):
-                Exclude limited star gifts.
+                Pass True to exclude gifts that can be purchased a limited number of times.
 
             exclude_upgraded (``bool``, *optional*):
-                Exclude upgraded star gifts.
+                Pass True to exclude upgraded gifts.
 
-            sort_by_value (``bool``, *optional*):
-                Sort star gifts by value.
+            sort_by_price (``bool``, *optional*):
+                Pass True to sort results by gift price instead of send date. Sorting is applied before pagination.
 
             offset (``str``, *optional*):
-                Offset of the results to be returned.
+                Offset of the first entry to return as received from the previous request.
 
             limit (``int``, *optional*):
-                Maximum amount of star gifts to be returned.
+                The maximum number of gifts to be returned.
 
         Returns:
             ``Generator``: A generator yielding :obj:`~pyrogram.types.Gift` objects.
@@ -95,7 +95,7 @@ class GetChatGifts:
                     exclude_unlimited=exclude_unlimited,
                     exclude_limited=exclude_limited,
                     exclude_unique=exclude_upgraded,
-                    sort_by_value=sort_by_value
+                    sort_by_value=sort_by_price
                 ),
                 sleep_threshold=60
             )

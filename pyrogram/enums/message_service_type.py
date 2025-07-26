@@ -174,5 +174,14 @@ class MessageServiceType(AutoName):
     PAID_MESSAGES_REFUNDED = auto()
     "Refunded paid messages"
 
-    PAID_MESSAGES_PRICE = auto()
+    PAID_MESSAGES_PRICE_CHANGED = auto()
     "Paid messages price"
+
+    DIRECT_MESSAGE_PRICE_CHANGED = auto()
+    "Direct message price"
+
+    CHECKLIST_TASKS_DONE = auto()
+    "Checklist tasks done"
+
+    CHECKLIST_TASKS_ADDED = auto()
+    "Checklist tasks added"

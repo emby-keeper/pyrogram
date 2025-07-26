@@ -17,11 +17,10 @@
 #  along with Pyrogram.  If not, see <http://www.gnu.org/licenses/>.
 
 from datetime import datetime
-from typing import Union, List, Iterable
+from typing import Iterable, List, Union
 
 import pyrogram
-from pyrogram import raw, utils
-from pyrogram import types
+from pyrogram import raw, types, utils
 
 
 class ForwardMessages:
@@ -38,6 +37,7 @@ class ForwardMessages:
         protect_content: bool = None,
         allow_paid_broadcast: bool = None,
         video_start_timestamp: int = None,
+        reply_parameters: "types.ReplyParameters" = None,
         paid_message_star_count: int = None
     ) -> Union["types.Message", List["types.Message"]]:
         """Forward messages of any kind.
@@ -87,6 +87,9 @@ class ForwardMessages:
             video_start_timestamp (``int``, *optional*):
                 Video startpoint, in seconds.
 
+            reply_parameters (:obj:`~pyrogram.types.ReplyParameters`, *optional*):
+                Describes reply parameters for the message that is being sent.
+
             paid_message_star_count (``int``, *optional*):
                 The number of Telegram Stars the user agreed to pay to send the messages.
 
@@ -119,25 +122,16 @@ class ForwardMessages:
                 noforwards=protect_content,
                 allow_paid_floodskip=allow_paid_broadcast,
                 top_msg_id=message_thread_id,
+                reply_to=await utils.get_reply_to(
+                    self,
+                    reply_parameters,
+                    message_thread_id
+                ),
                 video_timestamp=video_start_timestamp,
                 allow_paid_stars=paid_message_star_count
             )
         )
 
-        forwarded_messages = []
+        messages = await utils.parse_messages(client=self, messages=r)
 
-        users = {i.id: i for i in r.users}
-        chats = {i.id: i for i in r.chats}
-
-        for i in r.updates:
-            if isinstance(i, (raw.types.UpdateNewMessage,
-                              raw.types.UpdateNewChannelMessage,
-                              raw.types.UpdateNewScheduledMessage)):
-                forwarded_messages.append(
-                    await types.Message._parse(
-                        self, i.message,
-                        users, chats
-                    )
-                )
-
-        return types.List(forwarded_messages) if is_iterable else forwarded_messages[0]
+        return messages if is_iterable else messages[0] if messages else None

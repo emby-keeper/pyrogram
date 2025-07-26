@@ -52,8 +52,8 @@ from pyrogram.handlers.handler import Handler
 from pyrogram.methods import Methods
 from pyrogram.session import Auth, Session
 from pyrogram.storage import Storage, FileStorage, MemoryStorage
-from pyrogram.types import User, TermsOfService
-from pyrogram.utils import ainput
+from pyrogram.types import User, TermsOfService, LinkPreviewOptions
+from pyrogram.utils import MIN_MONOFORUM_CHANNEL_ID, ainput
 from pyrogram.qrlogin import QRLogin
 from .connection import Connection
 from .connection.transport import TCP, TCPAbridged
@@ -211,6 +211,9 @@ class Client(Methods):
             The platform where this client is running.
             Defaults to 'other'
 
+        link_preview_options (:obj:`~pyrogram.types.LinkPreviewOptions`, *optional*):
+            Global link preview options for the client.
+
         fetch_replies (``bool``, *optional*):
             Pass True to automatically fetch replies for messages.
             Defaults to True.
@@ -242,6 +245,7 @@ class Client(Methods):
     PARENT_DIR = Path(sys.argv[0]).parent
 
     INVITE_LINK_RE = re.compile(r"^(?:https?://)?(?:www\.)?(?:t(?:elegram)?\.(?:org|me|dog)/(?:joinchat/|\+))([\w-]+)$")
+    UPGRADED_GIFT_RE = re.compile(r"^(?:https?://)?(?:www\.)?(?:t(?:elegram)?\.(?:org|me|dog)/(?:nft/|\+))([\w-]+)$")
     WORKERS = min(32, (os.cpu_count() or 0) + 4)  # os.cpu_count() can be None
     WORKDIR = PARENT_DIR
 
@@ -289,6 +293,7 @@ class Client(Methods):
         max_topic_cache_size: int = MAX_TOPIC_CACHE_SIZE,
         storage_engine: Optional[Storage] = None,
         client_platform: "enums.ClientPlatform" = enums.ClientPlatform.OTHER,
+        link_preview_options: Optional[LinkPreviewOptions] = None,
         fetch_replies: Optional[bool] = True,
         fetch_topics: Optional[bool] = True,
         fetch_stories: Optional[bool] = True,
@@ -330,6 +335,7 @@ class Client(Methods):
         self.max_message_cache_size = max_message_cache_size
         self.max_topic_cache_size = max_topic_cache_size
         self.client_platform = client_platform
+        self.link_preview_options = link_preview_options
         self.fetch_replies = fetch_replies
         self.fetch_topics = fetch_topics
         self.fetch_stories = fetch_stories
@@ -374,6 +380,9 @@ class Client(Methods):
 
         self.takeout_id = None
 
+        self.start_handler = None
+        self.stop_handler = None
+        self.connect_handler = None
         self.disconnect_handler = None
 
         self.me: Optional[User] = None
@@ -422,6 +431,7 @@ class Client(Methods):
 
             if datetime.now() - self.last_update_time > timedelta(seconds=self.UPDATES_WATCHDOG_INTERVAL):
                 await self.invoke(raw.functions.updates.GetState())
+                await self.recover_gaps()
 
     async def authorize(self) -> User:
         if self.bot_token:
@@ -440,9 +450,9 @@ class Client(Methods):
                         if not value:
                             continue
 
-                        confirm = (await ainput(f'Is "{value}" correct? (y/N): ', loop=self.loop)).lower()
+                        confirm = await ainput(f'Is "{value}" correct? (y/N): ', loop=self.loop)
 
-                        if confirm == "y":
+                        if confirm.lower() == "y":
                             break
 
                     if ":" in value:
@@ -490,9 +500,9 @@ class Client(Methods):
 
                     try:
                         if not self.password:
-                            confirm = await ainput("Confirm password recovery (y/n): ", loop=self.loop)
+                            confirm = await ainput("Confirm password recovery (y/N): ", loop=self.loop)
 
-                            if confirm == "y":
+                            if confirm.lower() == "y":
                                 email_pattern = await self.send_recovery_code()
                                 print(f"The recovery code has been sent to {email_pattern}")
 
@@ -766,17 +776,23 @@ class Client(Methods):
             log.info(updates)
 
     async def recover_gaps(self) -> Tuple[int, int]:
+        if self.skip_updates:
+            log.info("Recover gaps disabled in client params. Skipping recovery")
+            return (0, 0)
+
         states = await self.storage.update_state()
+
+        if not states:
+            log.info("No states found, skipping recovery")
+            return (0, 0)
 
         message_updates_counter = 0
         other_updates_counter = 0
 
-        if not states:
-            log.info("No states found, skipping recovery.")
-            return (message_updates_counter, other_updates_counter)
+        log.info("Started gaps recovering...")
 
-        for state in states:
-            id, local_pts, _, local_date, _ = state
+        for local_state in states:
+            id, local_pts, local_qts, local_date, local_seq = local_state
 
             prev_pts = 0
 
@@ -789,7 +805,7 @@ class Client(Methods):
                             pts=local_pts,
                             limit=10000,
                             force=False
-                        ) if id < 0 else
+                        ) if id < 0 or id > MIN_MONOFORUM_CHANNEL_ID else
                         raw.functions.updates.GetDifference(
                             pts=local_pts,
                             date=local_date,
@@ -800,23 +816,62 @@ class Client(Methods):
                     break
 
                 if isinstance(diff, raw.types.updates.DifferenceEmpty):
+                    await self.storage.update_state(
+                        (
+                            id,
+                            local_pts,
+                            None,
+                            diff.date,
+                            diff.seq
+                        )
+                    )
                     break
                 elif isinstance(diff, raw.types.updates.DifferenceTooLong):
-                    break
+                    await self.storage.update_state(
+                        (
+                            id,
+                            diff.pts,
+                            None,
+                            local_date,
+                            local_seq
+                        )
+                    )
+                    continue
                 elif isinstance(diff, raw.types.updates.Difference):
                     local_pts = diff.state.pts
+                    local_date = diff.state.date
+                    local_seq = diff.state.seq
                 elif isinstance(diff, raw.types.updates.DifferenceSlice):
                     local_pts = diff.intermediate_state.pts
                     local_date = diff.intermediate_state.date
+                    local_seq = diff.intermediate_state.seq
 
                     if prev_pts == local_pts:
                         break
 
                     prev_pts = local_pts
                 elif isinstance(diff, raw.types.updates.ChannelDifferenceEmpty):
+                    await self.storage.update_state(
+                        (
+                            id,
+                            diff.pts,
+                            None,
+                            local_date,
+                            local_seq
+                        )
+                    )
                     break
                 elif isinstance(diff, raw.types.updates.ChannelDifferenceTooLong):
-                    break
+                    await self.storage.update_state(
+                        (
+                            id,
+                            diff.dialog.pts,
+                            None,
+                            local_date,
+                            local_seq
+                        )
+                    )
+                    continue
                 elif isinstance(diff, raw.types.updates.ChannelDifference):
                     local_pts = diff.pts
 
@@ -846,9 +901,18 @@ class Client(Methods):
                 if isinstance(diff, (raw.types.updates.Difference, raw.types.updates.ChannelDifference)):
                     break
 
-            await self.storage.update_state(id)
+            await self.storage.update_state(
+                (
+                    id,
+                    local_pts,
+                    None,
+                    local_date,
+                    local_seq
+                )
+            )
 
-        log.info("Recovered %s messages and %s updates.", message_updates_counter, other_updates_counter)
+
+        log.info("Recovered %s messages and %s updates", message_updates_counter, other_updates_counter)
         return (message_updates_counter, other_updates_counter)
 
     async def load_session(self):
@@ -894,9 +958,9 @@ class Client(Methods):
                                 print("Invalid value")
                                 continue
 
-                            confirm = (await ainput(f'Is "{value}" correct? (y/N): ', loop=self.loop)).lower()
+                            confirm = await ainput(f'Is "{value}" correct? (y/N): ', loop=self.loop)
 
-                            if confirm == "y":
+                            if confirm.lower() == "y":
                                 await self.storage.api_id(value)
                                 break
                         except Exception as e:

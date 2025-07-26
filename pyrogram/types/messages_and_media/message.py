@@ -23,7 +23,7 @@ from typing import BinaryIO, Callable, Dict, List, Match, Optional, Union
 
 import pyrogram
 from pyrogram import enums, raw, types, utils
-from pyrogram.errors import ChannelForumMissing, ChannelPrivate, MessageIdsEmpty, PeerIdInvalid
+from pyrogram.errors import ChannelForumMissing, ChannelPrivate, MessageIdsEmpty, PeerIdInvalid, ChatAdminRequired
 from pyrogram.parser import Parser
 from pyrogram.parser import utils as parser_utils
 
@@ -101,7 +101,11 @@ class Message(Object, Update):
 
         message_thread_id (``int``, *optional*):
             Unique identifier of a message thread to which the message belongs.
-            For supergroups only.
+            For forums only.
+
+        direct_messages_chat_topic_id (``int``, *optional*):
+            Unique identifier of a topic in a channel direct messages chat administered by the current user.
+            For direct chats only.
 
         effect_id (``int``, *optional*):
             Unique identifier of the message effect.
@@ -145,6 +149,9 @@ class Message(Object, Update):
 
         paid_media (:obj:`~pyrogram.types.PaidMediaInfo`, *optional*):
             The message is a paid media message.
+
+        checklist (:obj:`~pyrogram.types.Checklist`, *optional*):
+            The message is a checklist message.
 
         show_caption_above_media (``bool``, *optional*):
             If True, caption must be shown above the message media.
@@ -379,8 +386,17 @@ class Message(Object, Update):
         paid_messages_refunded (:obj:`~pyrogram.types.PaidMessagesRefunded`, *optional*):
             Service message: paid messages refunded.
 
-        paid_messages_price (:obj:`~pyrogram.types.PaidMessagesPrice`, *optional*):
+        paid_messages_price_changed (:obj:`~pyrogram.types.PaidMessagesPriceChanged`, *optional*):
             Service message: paid messages price.
+
+        direct_message_price_changed (:obj:`~pyrogram.types.DirectMessagePriceChanged`, *optional*):
+            Service message: direct messages price.
+
+        checklist_tasks_done (:obj:`~pyrogram.types.ChecklistTasksDone`, *optional*):
+            Service message: checklist tasks done.
+
+        checklist_tasks_added (:obj:`~pyrogram.types.ChecklistTasksAdded`, *optional*):
+            Service message: checklist tasks added.
 
         gift_code (:obj:`~pyrogram.types.GiftCode`, *optional*):
             Service message: gift code information.
@@ -458,8 +474,8 @@ class Message(Object, Update):
             Additional interface options. An object for an inline keyboard, custom reply keyboard,
             instructions to remove reply keyboard or to force a reply from the user.
 
-        reactions (List of :obj:`~pyrogram.types.Reaction`):
-            List of the reactions to this message.
+        reactions (:obj:`~pyrogram.types.MessageReactions`):
+            Reactions of this message.
 
         send_paid_messages_stars (``int``, *optional*):
             The number of Telegram Stars the sender paid to send the message.
@@ -515,6 +531,7 @@ class Message(Object, Update):
         topic: Optional["types.ForumTopic"] = None,
         forward_origin: Optional["types.MessageOrigin"] = None,
         message_thread_id: Optional[int] = None,
+        direct_messages_chat_topic_id: Optional[int] = None,
         effect_id: Optional[int] = None,
         reply_to_message_id: Optional[int] = None,
         reply_to_story_id: Optional[int] = None,
@@ -529,6 +546,7 @@ class Message(Object, Update):
         from_scheduled: Optional[bool] = None,
         media: Optional["enums.MessageMediaType"] = None,
         paid_media: Optional["types.PaidMediaInfo"] = None,
+        checklist: Optional["types.Checklist"] = None,
         edit_date: Optional[datetime] = None,
         edit_hidden: Optional[bool] = None,
         media_group_id: Optional[int] = None,
@@ -595,7 +613,10 @@ class Message(Object, Update):
         phone_call_ended: Optional["types.PhoneCallEnded"] = None,
         web_app_data: Optional["types.WebAppData"] = None,
         paid_messages_refunded: Optional["types.PaidMessagesRefunded"] = None,
-        paid_messages_price: Optional["types.PaidMessagesPrice"] = None,
+        paid_messages_price_changed: Optional["types.PaidMessagesPriceChanged"] = None,
+        direct_message_price_changed: Optional["types.DirectMessagePriceChanged"] = None,
+        checklist_tasks_done: Optional[List["types.ChecklistTasksDone"]] = None,
+        checklist_tasks_added: Optional[List["types.ChecklistTasksAdded"]] = None,
         gift_code: Optional["types.GiftCode"] = None,
         gifted_premium: Optional["types.GiftedPremium"] = None,
         gifted_stars: Optional["types.GiftedStars"] = None,
@@ -625,7 +646,7 @@ class Message(Object, Update):
                 "types.ForceReply"
             ]
         ] = None,
-        reactions: Optional[List["types.Reaction"]] = None,
+        reactions: Optional["types.MessageReactions"] = None,
         send_paid_messages_stars: Optional[int] = None,
         unread_media: Optional[bool] = None,
         silent: Optional[bool] = None,
@@ -654,6 +675,7 @@ class Message(Object, Update):
         self.topic = topic
         self.forward_origin = forward_origin
         self.message_thread_id = message_thread_id
+        self.direct_messages_chat_topic_id = direct_messages_chat_topic_id
         self.effect_id = effect_id
         self.reply_to_message_id = reply_to_message_id
         self.reply_to_story_id = reply_to_story_id
@@ -668,6 +690,7 @@ class Message(Object, Update):
         self.from_scheduled = from_scheduled
         self.media = media
         self.paid_media = paid_media
+        self.checklist = checklist
         self.edit_date = edit_date
         self.edit_hidden = edit_hidden
         self.media_group_id = media_group_id
@@ -738,7 +761,10 @@ class Message(Object, Update):
         self.phone_call_ended = phone_call_ended
         self.web_app_data = web_app_data
         self.paid_messages_refunded = paid_messages_refunded
-        self.paid_messages_price = paid_messages_price
+        self.paid_messages_price_changed = paid_messages_price_changed
+        self.direct_message_price_changed = direct_message_price_changed
+        self.checklist_tasks_done = checklist_tasks_done
+        self.checklist_tasks_added = checklist_tasks_added
         self.gift_code = gift_code
         self.gifted_premium = gifted_premium
         self.gifted_stars = gifted_stars
@@ -852,7 +878,10 @@ class Message(Object, Update):
         forum_topic_reopened = None
         web_app_data = None
         paid_messages_refunded = None
-        paid_messages_price = None
+        paid_messages_price_changed = None
+        direct_message_price_changed = None
+        checklist_tasks_done = None
+        checklist_tasks_added = None
 
         service_type = enums.MessageServiceType.UNSUPPORTED
 
@@ -1048,8 +1077,18 @@ class Message(Object, Update):
             service_type = enums.MessageServiceType.PAID_MESSAGES_REFUNDED
             paid_messages_refunded = types.PaidMessagesRefunded._parse(action)
         elif isinstance(action, raw.types.MessageActionPaidMessagesPrice):
-            service_type = enums.MessageServiceType.PAID_MESSAGES_PRICE
-            paid_messages_price = types.PaidMessagesPrice._parse(action)
+            if chat.type == enums.ChatType.DIRECT:
+                service_type = enums.MessageServiceType.DIRECT_MESSAGE_PRICE_CHANGED
+                direct_message_price_changed = types.DirectMessagePriceChanged._parse(action)
+            else:
+                service_type = enums.MessageServiceType.PAID_MESSAGES_PRICE_CHANGED
+                paid_messages_price_changed = types.PaidMessagesPriceChanged._parse(action)
+        elif isinstance(action, raw.types.MessageActionTodoCompletions):
+            service_type = enums.MessageServiceType.CHECKLIST_TASKS_DONE
+            checklist_tasks_done = types.ChecklistTasksDone._parse(message)
+        elif isinstance(action, raw.types.MessageActionTodoAppendTasks):
+            service_type = enums.MessageServiceType.CHECKLIST_TASKS_ADDED
+            checklist_tasks_added = types.ChecklistTasksAdded._parse(client, message)
 
         parsed_message = Message(
             id=message.id,
@@ -1106,8 +1145,11 @@ class Message(Object, Update):
             forum_topic_reopened=forum_topic_reopened,
             web_app_data=web_app_data,
             paid_messages_refunded=paid_messages_refunded,
-            paid_messages_price=paid_messages_price,
-            reactions=types.MessageReactions._parse(client, message.reactions),
+            paid_messages_price_changed=paid_messages_price_changed,
+            direct_message_price_changed=direct_message_price_changed,
+            checklist_tasks_done=checklist_tasks_done,
+            checklist_tasks_added=checklist_tasks_added,
+            reactions=types.MessageReactions._parse(client, message.reactions, users, chats),
             business_connection_id=business_connection_id,
             raw=message,
             client=client
@@ -1207,7 +1249,6 @@ class Message(Object, Update):
                 chats,
             )
 
-        message_thread_id = None
         photo = None
         location = None
         contact = None
@@ -1229,6 +1270,7 @@ class Message(Object, Update):
         poll = None
         dice = None
         paid_media = None
+        checklist = None
 
         media = message.media
         media_type = None
@@ -1317,7 +1359,11 @@ class Message(Object, Update):
             elif isinstance(media, raw.types.MessageMediaPaidMedia):
                 paid_media = types.PaidMediaInfo._parse(client, media)
                 media_type = enums.MessageMediaType.PAID_MEDIA
+            elif isinstance(media, raw.types.MessageMediaToDo):
+                media_type = enums.MessageMediaType.CHECKLIST
+                checklist = types.Checklist._parse(client, media, users)
             else:
+                media_type = enums.MessageMediaType.UNSUPPORTED
                 media = None
 
         link_preview_options = types.LinkPreviewOptions._parse(
@@ -1340,11 +1386,10 @@ class Message(Object, Update):
             else:
                 reply_markup = None
 
-        reactions = types.MessageReactions._parse(client, message.reactions)
+        reactions = types.MessageReactions._parse(client, message.reactions, users, chats)
 
         parsed_message = Message(
             id=message.id,
-            message_thread_id=message_thread_id,
             effect_id=getattr(message, "effect", None),
             date=utils.timestamp_to_datetime(message.date),
             chat=chat,
@@ -1383,6 +1428,7 @@ class Message(Object, Update):
             from_scheduled=message.from_scheduled,
             media=media_type,
             paid_media=paid_media,
+            checklist=checklist,
             show_caption_above_media=getattr(message, "invert_media", None),
             edit_date=utils.timestamp_to_datetime(message.edit_date),
             edit_hidden=message.edit_hide,
@@ -1525,7 +1571,9 @@ class Message(Object, Update):
         if not parsed_message.topic and parsed_message.chat.is_forum:
             parsed_topic = client.topic_cache[(parsed_message.chat.id, parsed_message.message_thread_id)]
 
-            if not parsed_topic and client.fetch_topics and client.me and not client.me.is_bot:
+            if parsed_topic:
+                parsed_message.topic = parsed_topic
+            elif client.fetch_topics and client.me and not client.me.is_bot:
                 try:
                     parsed_message.topic = await client.get_forum_topics_by_id(
                         chat_id=parsed_message.chat.id,
@@ -1537,7 +1585,24 @@ class Message(Object, Update):
                 except (ChannelPrivate, ChannelForumMissing):
                     pass
 
-            parsed_message.topic = parsed_topic
+        if chat.type == enums.ChatType.DIRECT:
+            parsed_message.direct_messages_chat_topic_id = message.saved_peer_id.user_id
+
+            parsed_topic = client.topic_cache[(parsed_message.chat.id, parsed_message.direct_messages_chat_topic_id)]
+
+            if parsed_topic:
+                parsed_message.topic = parsed_topic
+            elif client.fetch_topics:
+                try:
+                    parsed_message.topic = await client.get_direct_messages_topics_by_id(
+                        chat_id=parsed_message.chat.id,
+                        topic_ids=parsed_message.direct_messages_chat_topic_id
+                    )
+
+                    if parsed_message.topic:
+                        client.topic_cache[(parsed_message.chat.id, parsed_message.topic.id)] = parsed_message.topic
+                except ChatAdminRequired:
+                    pass
 
         if not parsed_message.poll:  # Do not cache poll messages
             client.message_cache[(parsed_message.chat.id, parsed_message.id)] = parsed_message
@@ -1590,16 +1655,22 @@ class Message(Object, Update):
 
     @property
     def link(self) -> str:
-        if (
-            self.chat.type in (enums.ChatType.GROUP, enums.ChatType.SUPERGROUP, enums.ChatType.CHANNEL)
-            and self.chat.username
-        ):
-            return f"https://t.me/{self.chat.username}/{self.id}"
+        if self.chat.type in (enums.ChatType.PRIVATE, enums.ChatType.BOT):
+            return ""
+
+        if self.chat.username:
+            if self.message_thread_id:
+                return f"https://t.me/{self.chat.username}/{self.message_thread_id}/{self.id}"
+            else:
+                return f"https://t.me/{self.chat.username}/{self.id}"
         else:
-            return f"https://t.me/c/{utils.get_channel_id(self.chat.id)}/{self.id}"
+            if self.message_thread_id:
+                return f"https://t.me/c/{utils.get_channel_id(self.chat.id)}/{self.message_thread_id}/{self.id}"
+            else:
+                return f"https://t.me/c/{utils.get_channel_id(self.chat.id)}/{self.id}"
 
     @property
-    def content(self) -> str:
+    def content(self) -> Str:
         return self.text or self.caption or Str("").init([])
 
     # region Deprecated
@@ -1694,6 +1765,7 @@ class Message(Object, Update):
         link_preview_options: "types.LinkPreviewOptions" = None,
         disable_notification: bool = None,
         message_thread_id: int = None,
+        direct_messages_chat_topic_id: int = None,
         effect_id: int = None,
         show_caption_above_media: bool = None,
         reply_parameters: "types.ReplyParameters" = None,
@@ -1734,7 +1806,7 @@ class Message(Object, Update):
 
             quote (``bool``, *optional*):
                 If ``True``, the message will be sent as a reply to this message.
-                If *reply_to_message_id* is passed, this parameter will be ignored.
+                If *reply_parameters* is passed, this parameter will be ignored.
                 Defaults to ``True`` in group chats and ``False`` in private chats.
 
             parse_mode (:obj:`~pyrogram.enums.ParseMode`, *optional*):
@@ -1753,7 +1825,11 @@ class Message(Object, Update):
 
             message_thread_id (``int``, *optional*):
                 Unique identifier of a message thread to which the message belongs.
-                For supergroups only.
+                For forums only.
+
+            direct_messages_chat_topic_id (``int``, *optional*):
+                Unique identifier of the topic in a channel direct messages chat administered by the current user.
+                For directs only.
 
             effect_id (``int``, *optional*):
                 Unique identifier of the message effect.
@@ -1804,6 +1880,9 @@ class Message(Object, Update):
         if message_thread_id is None:
             message_thread_id = self.message_thread_id
 
+        if direct_messages_chat_topic_id is None:
+            direct_messages_chat_topic_id = self.direct_messages_chat_topic_id
+
         if business_connection_id is None:
             business_connection_id = self.business_connection_id
 
@@ -1815,6 +1894,7 @@ class Message(Object, Update):
             link_preview_options=link_preview_options,
             disable_notification=disable_notification,
             message_thread_id=message_thread_id,
+            direct_messages_chat_topic_id=direct_messages_chat_topic_id,
             effect_id=effect_id,
             show_caption_above_media=show_caption_above_media,
             reply_parameters=reply_parameters,
@@ -1857,6 +1937,7 @@ class Message(Object, Update):
             "types.ForceReply"
         ] = None,
         message_thread_id: int = None,
+        direct_messages_chat_topic_id: int = None,
         effect_id: int = None,
         reply_parameters: "types.ReplyParameters" = None,
         progress: Callable = None,
@@ -1891,7 +1972,7 @@ class Message(Object, Update):
 
             quote (``bool``, *optional*):
                 If ``True``, the message will be sent as a reply to this message.
-                If *reply_to_message_id* is passed, this parameter will be ignored.
+                If *reply_parameters* is passed, this parameter will be ignored.
                 Defaults to ``True`` in group chats and ``False`` in private chats.
 
             caption (``str``, *optional*):
@@ -1931,7 +2012,11 @@ class Message(Object, Update):
 
             message_thread_id (``int``, *optional*):
                 Unique identifier of a message thread to which the message belongs.
-                For supergroups only.
+                For forums only.
+
+            direct_messages_chat_topic_id (``int``, *optional*):
+                Unique identifier of the topic in a channel direct messages chat administered by the current user.
+                For directs only.
 
             effect_id (``int``, *optional*):
                 Unique identifier of the message effect.
@@ -1997,6 +2082,9 @@ class Message(Object, Update):
         if message_thread_id is None:
             message_thread_id = self.message_thread_id
 
+        if direct_messages_chat_topic_id is None:
+            direct_messages_chat_topic_id = self.direct_messages_chat_topic_id
+
         if business_connection_id is None:
             business_connection_id = self.business_connection_id
 
@@ -2014,6 +2102,7 @@ class Message(Object, Update):
             thumb=thumb,
             disable_notification=disable_notification,
             message_thread_id=message_thread_id,
+            direct_messages_chat_topic_id=direct_messages_chat_topic_id,
             effect_id=effect_id,
             reply_parameters=reply_parameters,
             business_connection_id=business_connection_id,
@@ -2041,6 +2130,7 @@ class Message(Object, Update):
         thumb: Union[str, BinaryIO] = None,
         disable_notification: bool = None,
         message_thread_id: int = None,
+        direct_messages_chat_topic_id: int = None,
         effect_id: int = None,
         reply_parameters: "types.ReplyParameters" = None,
         business_connection_id: str = None,
@@ -2084,7 +2174,7 @@ class Message(Object, Update):
 
             quote (``bool``, *optional*):
                 If ``True``, the message will be sent as a reply to this message.
-                If *reply_to_message_id* is passed, this parameter will be ignored.
+                If *reply_parameters* is passed, this parameter will be ignored.
                 Defaults to ``True`` in group chats and ``False`` in private chats.
 
             caption (``str``, *optional*):
@@ -2118,7 +2208,11 @@ class Message(Object, Update):
 
             message_thread_id (``int``, *optional*):
                 Unique identifier of a message thread to which the message belongs.
-                For supergroups only.
+                For forums only.
+
+            direct_messages_chat_topic_id (``int``, *optional*):
+                Unique identifier of the topic in a channel direct messages chat administered by the current user.
+                For directs only.
 
             effect_id (``int``, *optional*):
                 Unique identifier of the message effect.
@@ -2184,6 +2278,9 @@ class Message(Object, Update):
         if message_thread_id is None:
             message_thread_id = self.message_thread_id
 
+        if direct_messages_chat_topic_id is None:
+            direct_messages_chat_topic_id = self.direct_messages_chat_topic_id
+
         if business_connection_id is None:
             business_connection_id = self.business_connection_id
 
@@ -2199,6 +2296,7 @@ class Message(Object, Update):
             thumb=thumb,
             disable_notification=disable_notification,
             message_thread_id=message_thread_id,
+            direct_messages_chat_topic_id=direct_messages_chat_topic_id,
             effect_id=effect_id,
             reply_parameters=reply_parameters,
             business_connection_id=business_connection_id,
@@ -2222,6 +2320,7 @@ class Message(Object, Update):
         caption_entities: List["types.MessageEntity"] = None,
         disable_notification: bool = None,
         message_thread_id: int = None,
+        direct_messages_chat_topic_id: int = None,
         reply_parameters: "types.ReplyParameters" = None,
         business_connection_id: str = None,
         allow_paid_broadcast: bool = None,
@@ -2260,7 +2359,7 @@ class Message(Object, Update):
 
             quote (``bool``, *optional*):
                 If ``True``, the message will be sent as a reply to this message.
-                If *reply_to_message_id* is passed, this parameter will be ignored.
+                If *reply_parameters* is passed, this parameter will be ignored.
                 Defaults to ``True`` in group chats and ``False`` in private chats.
 
             caption (``bool``, *optional*):
@@ -2279,7 +2378,11 @@ class Message(Object, Update):
 
             message_thread_id (``int``, *optional*):
                 Unique identifier of a message thread to which the message belongs.
-                For supergroups only.
+                For forums only.
+
+            direct_messages_chat_topic_id (``int``, *optional*):
+                Unique identifier of the topic in a channel direct messages chat administered by the current user.
+                For directs only.
 
             reply_parameters (:obj:`~pyrogram.types.ReplyParameters`, *optional*):
                 Describes reply parameters for the message that is being sent.
@@ -2317,6 +2420,9 @@ class Message(Object, Update):
         if message_thread_id is None:
             message_thread_id = self.message_thread_id
 
+        if direct_messages_chat_topic_id is None:
+            direct_messages_chat_topic_id = self.direct_messages_chat_topic_id
+
         if business_connection_id is None:
             business_connection_id = self.business_connection_id
 
@@ -2328,6 +2434,7 @@ class Message(Object, Update):
             caption_entities=caption_entities,
             disable_notification=disable_notification,
             message_thread_id=message_thread_id,
+            direct_messages_chat_topic_id=direct_messages_chat_topic_id,
             reply_parameters=reply_parameters,
             business_connection_id=business_connection_id,
             allow_paid_broadcast=allow_paid_broadcast,
@@ -2396,6 +2503,7 @@ class Message(Object, Update):
         vcard: str = "",
         disable_notification: bool = None,
         message_thread_id: int = None,
+        direct_messages_chat_topic_id: int = None,
         effect_id: int = None,
         reply_parameters: "types.ReplyParameters" = None,
         business_connection_id: str = None,
@@ -2439,7 +2547,7 @@ class Message(Object, Update):
 
             quote (``bool``, *optional*):
                 If ``True``, the message will be sent as a reply to this message.
-                If *reply_to_message_id* is passed, this parameter will be ignored.
+                If *reply_parameters* is passed, this parameter will be ignored.
                 Defaults to ``True`` in group chats and ``False`` in private chats.
 
             last_name (``str``, *optional*):
@@ -2454,7 +2562,11 @@ class Message(Object, Update):
 
             message_thread_id (``int``, *optional*):
                 Unique identifier of a message thread to which the message belongs.
-                For supergroups only.
+                For forums only.
+
+            direct_messages_chat_topic_id (``int``, *optional*):
+                Unique identifier of the topic in a channel direct messages chat administered by the current user.
+                For directs only.
 
             effect_id (``int``, *optional*):
                 Unique identifier of the message effect.
@@ -2496,6 +2608,9 @@ class Message(Object, Update):
         if message_thread_id is None:
             message_thread_id = self.message_thread_id
 
+        if direct_messages_chat_topic_id is None:
+            direct_messages_chat_topic_id = self.direct_messages_chat_topic_id
+
         if business_connection_id is None:
             business_connection_id = self.business_connection_id
 
@@ -2507,6 +2622,7 @@ class Message(Object, Update):
             vcard=vcard,
             disable_notification=disable_notification,
             message_thread_id=message_thread_id,
+            direct_messages_chat_topic_id=direct_messages_chat_topic_id,
             effect_id=effect_id,
             reply_parameters=reply_parameters,
             business_connection_id=business_connection_id,
@@ -2532,6 +2648,7 @@ class Message(Object, Update):
         force_document: bool = None,
         disable_notification: bool = None,
         message_thread_id: int = None,
+        direct_messages_chat_topic_id: int = None,
         effect_id: int = None,
         reply_parameters: "types.ReplyParameters" = None,
         schedule_date: datetime = None,
@@ -2577,7 +2694,7 @@ class Message(Object, Update):
 
             quote (``bool``, *optional*):
                 If ``True``, the message will be sent as a reply to this message.
-                If *reply_to_message_id* is passed, this parameter will be ignored.
+                If *reply_parameters* is passed, this parameter will be ignored.
                 Defaults to ``True`` in group chats and ``False`` in private chats.
 
             thumb (``str`` | ``BinaryIO``, *optional*):
@@ -2611,7 +2728,11 @@ class Message(Object, Update):
 
             message_thread_id (``int``, *optional*):
                 Unique identifier of a message thread to which the message belongs.
-                For supergroups only.
+                For forums only.
+
+            direct_messages_chat_topic_id (``int``, *optional*):
+                Unique identifier of the topic in a channel direct messages chat administered by the current user.
+                For directs only.
 
             effect_id (``int``, *optional*):
                 Unique identifier of the message effect.
@@ -2683,6 +2804,9 @@ class Message(Object, Update):
         if message_thread_id is None:
             message_thread_id = self.message_thread_id
 
+        if direct_messages_chat_topic_id is None:
+            direct_messages_chat_topic_id = self.direct_messages_chat_topic_id
+
         if business_connection_id is None:
             business_connection_id = self.business_connection_id
 
@@ -2697,6 +2821,7 @@ class Message(Object, Update):
             force_document=force_document,
             disable_notification=disable_notification,
             message_thread_id=message_thread_id,
+            direct_messages_chat_topic_id=direct_messages_chat_topic_id,
             effect_id=effect_id,
             reply_parameters=reply_parameters,
             schedule_date=schedule_date,
@@ -2753,7 +2878,7 @@ class Message(Object, Update):
 
             quote (``bool``, *optional*):
                 If ``True``, the message will be sent as a reply to this message.
-                If *reply_to_message_id* is passed, this parameter will be ignored.
+                If *reply_parameters* is passed, this parameter will be ignored.
                 Defaults to ``True`` in group chats and ``False`` in private chats.
 
             disable_notification (``bool``, *optional*):
@@ -2818,6 +2943,7 @@ class Message(Object, Update):
         quote: bool = None,
         disable_notification: bool = None,
         message_thread_id: bool = None,
+        direct_messages_chat_topic_id: int = None,
         reply_parameters: "types.ReplyParameters" = None,
         paid_message_star_count: int = None,
 
@@ -2852,7 +2978,7 @@ class Message(Object, Update):
 
             quote (``bool``, *optional*):
                 If ``True``, the message will be sent as a reply to this message.
-                If *reply_to_message_id* is passed, this parameter will be ignored.
+                If *reply_parameters* is passed, this parameter will be ignored.
                 Defaults to ``True`` in group chats and ``False`` in private chats.
 
             disable_notification (``bool``, *optional*):
@@ -2861,7 +2987,11 @@ class Message(Object, Update):
 
             message_thread_id (``int``, *optional*):
                 Unique identifier of a message thread to which the message belongs.
-                For supergroups only.
+                For forums only.
+
+            direct_messages_chat_topic_id (``int``, *optional*):
+                Unique identifier of the topic in a channel direct messages chat administered by the current user.
+                For directs only.
 
             reply_parameters (:obj:`~pyrogram.types.ReplyParameters`, *optional*):
                 Describes reply parameters for the message that is being sent.
@@ -2886,12 +3016,16 @@ class Message(Object, Update):
         if message_thread_id is None:
             message_thread_id = self.message_thread_id
 
+        if direct_messages_chat_topic_id is None:
+            direct_messages_chat_topic_id = self.direct_messages_chat_topic_id
+
         return await self._client.send_inline_bot_result(
             chat_id=self.chat.id,
             query_id=query_id,
             result_id=result_id,
             disable_notification=disable_notification,
             message_thread_id=message_thread_id,
+            direct_messages_chat_topic_id=direct_messages_chat_topic_id,
             reply_parameters=reply_parameters,
             paid_message_star_count=paid_message_star_count,
 
@@ -2908,6 +3042,7 @@ class Message(Object, Update):
         quote: bool = None,
         disable_notification: bool = None,
         message_thread_id: int = None,
+        direct_messages_chat_topic_id: int = None,
         effect_id: int = None,
         reply_parameters: "types.ReplyParameters" = None,
         business_connection_id: str = None,
@@ -2950,7 +3085,7 @@ class Message(Object, Update):
 
             quote (``bool``, *optional*):
                 If ``True``, the message will be sent as a reply to this message.
-                If *reply_to_message_id* is passed, this parameter will be ignored.
+                If *reply_parameters* is passed, this parameter will be ignored.
                 Defaults to ``True`` in group chats and ``False`` in private chats.
 
             disable_notification (``bool``, *optional*):
@@ -2959,7 +3094,11 @@ class Message(Object, Update):
 
             message_thread_id (``int``, *optional*):
                 Unique identifier of a message thread to which the message belongs.
-                For supergroups only.
+                For forums only.
+
+            direct_messages_chat_topic_id (``int``, *optional*):
+                Unique identifier of the topic in a channel direct messages chat administered by the current user.
+                For directs only.
 
             effect_id (``int``, *optional*):
                 Unique identifier of the message effect.
@@ -3001,6 +3140,9 @@ class Message(Object, Update):
         if message_thread_id is None:
             message_thread_id = self.message_thread_id
 
+        if direct_messages_chat_topic_id is None:
+            direct_messages_chat_topic_id = self.direct_messages_chat_topic_id
+
         if business_connection_id is None:
             business_connection_id = self.business_connection_id
 
@@ -3010,6 +3152,7 @@ class Message(Object, Update):
             longitude=longitude,
             disable_notification=disable_notification,
             message_thread_id=message_thread_id,
+            direct_messages_chat_topic_id=direct_messages_chat_topic_id,
             effect_id=effect_id,
             reply_parameters=reply_parameters,
             business_connection_id=business_connection_id,
@@ -3028,6 +3171,7 @@ class Message(Object, Update):
         quote: bool = None,
         disable_notification: bool = None,
         message_thread_id: int = None,
+        direct_messages_chat_topic_id: int = None,
         effect_id: int = None,
         reply_parameters: "types.ReplyParameters" = None,
         allow_paid_broadcast: bool = None,
@@ -3063,7 +3207,7 @@ class Message(Object, Update):
 
             quote (``bool``, *optional*):
                 If ``True``, the message will be sent as a reply to this message.
-                If *reply_to_message_id* is passed, this parameter will be ignored.
+                If *reply_parameters* is passed, this parameter will be ignored.
                 Defaults to ``True`` in group chats and ``False`` in private chats.
 
             disable_notification (``bool``, *optional*):
@@ -3072,7 +3216,11 @@ class Message(Object, Update):
 
             message_thread_id (``int``, *optional*):
                 Unique identifier of a message thread to which the message belongs.
-                For supergroups only.
+                For forums only.
+
+            direct_messages_chat_topic_id (``int``, *optional*):
+                Unique identifier of the topic in a channel direct messages chat administered by the current user.
+                For directs only.
 
             effect_id (``int``, *optional*):
                 Unique identifier of the message effect.
@@ -3111,6 +3259,9 @@ class Message(Object, Update):
         if message_thread_id is None:
             message_thread_id = self.message_thread_id
 
+        if direct_messages_chat_topic_id is None:
+            direct_messages_chat_topic_id = self.direct_messages_chat_topic_id
+
         if business_connection_id is None:
             business_connection_id = self.business_connection_id
 
@@ -3119,6 +3270,7 @@ class Message(Object, Update):
             media=media,
             disable_notification=disable_notification,
             message_thread_id=message_thread_id,
+            direct_messages_chat_topic_id=direct_messages_chat_topic_id,
             effect_id=effect_id,
             reply_parameters=reply_parameters,
             allow_paid_broadcast=allow_paid_broadcast,
@@ -3143,6 +3295,7 @@ class Message(Object, Update):
         ttl_seconds: int = None,
         disable_notification: bool = None,
         message_thread_id: int = None,
+        direct_messages_chat_topic_id: int = None,
         effect_id: int = None,
         reply_parameters: "types.ReplyParameters" = None,
         view_once: bool = None,
@@ -3187,7 +3340,7 @@ class Message(Object, Update):
 
             quote (``bool``, *optional*):
                 If ``True``, the message will be sent as a reply to this message.
-                If *reply_to_message_id* is passed, this parameter will be ignored.
+                If *reply_parameters* is passed, this parameter will be ignored.
                 Defaults to ``True`` in group chats and ``False`` in private chats.
 
             caption (``str``, *optional*):
@@ -3217,7 +3370,11 @@ class Message(Object, Update):
 
             message_thread_id (``int``, *optional*):
                 Unique identifier of a message thread to which the message belongs.
-                For supergroups only.
+                For forums only.
+
+            direct_messages_chat_topic_id (``int``, *optional*):
+                Unique identifier of the topic in a channel direct messages chat administered by the current user.
+                For directs only.
 
             effect_id (``int``, *optional*):
                 Unique identifier of the message effect.
@@ -3287,6 +3444,9 @@ class Message(Object, Update):
         if message_thread_id is None:
             message_thread_id = self.message_thread_id
 
+        if direct_messages_chat_topic_id is None:
+            direct_messages_chat_topic_id = self.direct_messages_chat_topic_id
+
         if business_connection_id is None:
             business_connection_id = self.business_connection_id
 
@@ -3301,6 +3461,7 @@ class Message(Object, Update):
             ttl_seconds=ttl_seconds,
             disable_notification=disable_notification,
             message_thread_id=message_thread_id,
+            direct_messages_chat_topic_id=direct_messages_chat_topic_id,
             effect_id=effect_id,
             reply_parameters=reply_parameters,
             view_once=view_once,
@@ -3430,7 +3591,7 @@ class Message(Object, Update):
 
             quote (``bool``, *optional*):
                 If ``True``, the message will be sent as a reply to this message.
-                If *reply_to_message_id* is passed, this parameter will be ignored.
+                If *reply_parameters* is passed, this parameter will be ignored.
                 Defaults to ``True`` in group chats and ``False`` in private chats.
 
             disable_notification (``bool``, *optional*):
@@ -3539,6 +3700,7 @@ class Message(Object, Update):
         caption_entities: List["types.MessageEntity"] = None,
         disable_notification: bool = None,
         message_thread_id: int = None,
+        direct_messages_chat_topic_id: int = None,
         effect_id: int = None,
         reply_parameters: "types.ReplyParameters" = None,
         business_connection_id: str = None,
@@ -3582,7 +3744,7 @@ class Message(Object, Update):
 
             quote (``bool``, *optional*):
                 If ``True``, the message will be sent as a reply to this message.
-                If *reply_to_message_id* is passed, this parameter will be ignored.
+                If *reply_parameters* is passed, this parameter will be ignored.
                 Defaults to ``True`` in group chats and ``False`` in private chats.
 
             emoji (``str``, *optional*):
@@ -3604,7 +3766,11 @@ class Message(Object, Update):
 
             message_thread_id (``int``, *optional*):
                 Unique identifier of a message thread to which the message belongs.
-                For supergroups only.
+                For forums only.
+
+            direct_messages_chat_topic_id (``int``, *optional*):
+                Unique identifier of the topic in a channel direct messages chat administered by the current user.
+                For directs only.
 
             effect_id (``int``, *optional*):
                 Unique identifier of the message effect.
@@ -3670,6 +3836,9 @@ class Message(Object, Update):
         if message_thread_id is None:
             message_thread_id = self.message_thread_id
 
+        if direct_messages_chat_topic_id is None:
+            direct_messages_chat_topic_id = self.direct_messages_chat_topic_id
+
         if business_connection_id is None:
             business_connection_id = self.business_connection_id
 
@@ -3682,6 +3851,7 @@ class Message(Object, Update):
             caption_entities=caption_entities,
             disable_notification=disable_notification,
             message_thread_id=message_thread_id,
+            direct_messages_chat_topic_id=direct_messages_chat_topic_id,
             effect_id=effect_id,
             reply_parameters=reply_parameters,
             business_connection_id=business_connection_id,
@@ -3707,6 +3877,7 @@ class Message(Object, Update):
         foursquare_type: str = "",
         disable_notification: bool = None,
         message_thread_id: int = None,
+        direct_messages_chat_topic_id: int = None,
         effect_id: int = None,
         reply_parameters: "types.ReplyParameters" = None,
         business_connection_id: str = None,
@@ -3758,7 +3929,7 @@ class Message(Object, Update):
 
             quote (``bool``, *optional*):
                 If ``True``, the message will be sent as a reply to this message.
-                If *reply_to_message_id* is passed, this parameter will be ignored.
+                If *reply_parameters* is passed, this parameter will be ignored.
                 Defaults to ``True`` in group chats and ``False`` in private chats.
 
             foursquare_id (``str``, *optional*):
@@ -3774,7 +3945,11 @@ class Message(Object, Update):
 
             message_thread_id (``int``, *optional*):
                 Unique identifier of a message thread to which the message belongs.
-                For supergroups only.
+                For forums only.
+
+            direct_messages_chat_topic_id (``int``, *optional*):
+                Unique identifier of the topic in a channel direct messages chat administered by the current user.
+                For directs only.
 
             effect_id (``int``, *optional*):
                 Unique identifier of the message effect.
@@ -3816,6 +3991,9 @@ class Message(Object, Update):
         if message_thread_id is None:
             message_thread_id = self.message_thread_id
 
+        if direct_messages_chat_topic_id is None:
+            direct_messages_chat_topic_id = self.direct_messages_chat_topic_id
+
         if business_connection_id is None:
             business_connection_id = self.business_connection_id
 
@@ -3829,6 +4007,7 @@ class Message(Object, Update):
             foursquare_type=foursquare_type,
             disable_notification=disable_notification,
             message_thread_id=message_thread_id,
+            direct_messages_chat_topic_id=direct_messages_chat_topic_id,
             effect_id=effect_id,
             reply_parameters=reply_parameters,
             business_connection_id=business_connection_id,
@@ -3861,6 +4040,7 @@ class Message(Object, Update):
         supports_streaming: bool = True,
         disable_notification: bool = None,
         message_thread_id: int = None,
+        direct_messages_chat_topic_id: int = None,
         effect_id: int = None,
         reply_parameters: "types.ReplyParameters" = None,
         no_sound: bool = None,
@@ -3905,7 +4085,7 @@ class Message(Object, Update):
 
             quote (``bool``, *optional*):
                 If ``True``, the message will be sent as a reply to this message.
-                If *reply_to_message_id* is passed, this parameter will be ignored.
+                If *reply_parameters* is passed, this parameter will be ignored.
                 Defaults to ``True`` in group chats and ``False`` in private chats.
 
             caption (``str``, *optional*):
@@ -3963,7 +4143,11 @@ class Message(Object, Update):
 
             message_thread_id (``int``, *optional*):
                 Unique identifier of a message thread to which the message belongs.
-                For supergroups only.
+                For forums only.
+
+            direct_messages_chat_topic_id (``int``, *optional*):
+                Unique identifier of the topic in a channel direct messages chat administered by the current user.
+                For directs only.
 
             effect_id (``int``, *optional*):
                 Unique identifier of the message effect.
@@ -4033,6 +4217,9 @@ class Message(Object, Update):
         if message_thread_id is None:
             message_thread_id = self.message_thread_id
 
+        if direct_messages_chat_topic_id is None:
+            direct_messages_chat_topic_id = self.direct_messages_chat_topic_id
+
         if business_connection_id is None:
             business_connection_id = self.business_connection_id
 
@@ -4054,6 +4241,7 @@ class Message(Object, Update):
             supports_streaming=supports_streaming,
             disable_notification=disable_notification,
             message_thread_id=message_thread_id,
+            direct_messages_chat_topic_id=direct_messages_chat_topic_id,
             effect_id=effect_id,
             reply_parameters=reply_parameters,
             no_sound=no_sound,
@@ -4078,6 +4266,7 @@ class Message(Object, Update):
         thumb: Union[str, BinaryIO] = None,
         disable_notification: bool = None,
         message_thread_id: int = None,
+        direct_messages_chat_topic_id: int = None,
         effect_id: int = None,
         reply_parameters: "types.ReplyParameters" = None,
         protect_content: bool = None,
@@ -4124,7 +4313,7 @@ class Message(Object, Update):
 
             quote (``bool``, *optional*):
                 If ``True``, the message will be sent as a reply to this message.
-                If *reply_to_message_id* is passed, this parameter will be ignored.
+                If *reply_parameters* is passed, this parameter will be ignored.
                 Defaults to ``True`` in group chats and ``False`` in private chats.
 
             duration (``int``, *optional*):
@@ -4145,7 +4334,11 @@ class Message(Object, Update):
 
             message_thread_id (``int``, *optional*):
                 Unique identifier of a message thread to which the message belongs.
-                For supergroups only.
+                For forums only.
+
+            direct_messages_chat_topic_id (``int``, *optional*):
+                Unique identifier of the topic in a channel direct messages chat administered by the current user.
+                For directs only.
 
             effect_id (``int``, *optional*):
                 Unique identifier of the message effect.
@@ -4218,6 +4411,9 @@ class Message(Object, Update):
         if message_thread_id is None:
             message_thread_id = self.message_thread_id
 
+        if direct_messages_chat_topic_id is None:
+            direct_messages_chat_topic_id = self.direct_messages_chat_topic_id
+
         if business_connection_id is None:
             business_connection_id = self.business_connection_id
 
@@ -4229,6 +4425,7 @@ class Message(Object, Update):
             thumb=thumb,
             disable_notification=disable_notification,
             message_thread_id=message_thread_id,
+            direct_messages_chat_topic_id=direct_messages_chat_topic_id,
             effect_id=effect_id,
             reply_parameters=reply_parameters,
             protect_content=protect_content,
@@ -4256,6 +4453,7 @@ class Message(Object, Update):
         duration: int = 0,
         disable_notification: bool = None,
         message_thread_id: int = None,
+        direct_messages_chat_topic_id: int = None,
         effect_id: int = None,
         reply_parameters: "types.ReplyParameters" = None,
         view_once: bool = None,
@@ -4300,7 +4498,7 @@ class Message(Object, Update):
 
             quote (``bool``, *optional*):
                 If ``True``, the message will be sent as a reply to this message.
-                If *reply_to_message_id* is passed, this parameter will be ignored.
+                If *reply_parameters* is passed, this parameter will be ignored.
                 Defaults to ``True`` in group chats and ``False`` in private chats.
 
             caption (``str``, *optional*):
@@ -4322,7 +4520,11 @@ class Message(Object, Update):
 
             message_thread_id (``int``, *optional*):
                 Unique identifier of a message thread to which the message belongs.
-                For supergroups only.
+                For forums only.
+
+            direct_messages_chat_topic_id (``int``, *optional*):
+                Unique identifier of the topic in a channel direct messages chat administered by the current user.
+                For directs only.
 
             effect_id (``int``, *optional*):
                 Unique identifier of the message effect.
@@ -4392,6 +4594,9 @@ class Message(Object, Update):
         if message_thread_id is None:
             message_thread_id = self.message_thread_id
 
+        if direct_messages_chat_topic_id is None:
+            direct_messages_chat_topic_id = self.direct_messages_chat_topic_id
+
         if business_connection_id is None:
             business_connection_id = self.business_connection_id
 
@@ -4404,6 +4609,7 @@ class Message(Object, Update):
             duration=duration,
             disable_notification=disable_notification,
             message_thread_id=message_thread_id,
+            direct_messages_chat_topic_id=direct_messages_chat_topic_id,
             effect_id=effect_id,
             reply_parameters=reply_parameters,
             view_once=view_once,
@@ -4430,6 +4636,7 @@ class Message(Object, Update):
         entities: List["types.MessageEntity"] = None,
         disable_notification: bool = None,
         message_thread_id: int = None,
+        direct_messages_chat_topic_id: int = None,
         effect_id: int = None,
         show_caption_above_media: bool = None,
         reply_parameters: "types.ReplyParameters" = None,
@@ -4472,6 +4679,11 @@ class Message(Object, Update):
             text (``str``, *optional*):
                 Text of the message to be sent.
 
+            quote (``bool``, *optional*):
+                If ``True``, the message will be sent as a reply to this message.
+                If *reply_parameters* is passed, this parameter will be ignored.
+                Defaults to ``True`` in group chats and ``False`` in private chats.
+
             url (``str``, *optional*):
                 Link that will be previewed.
                 If url not specified, the first URL found in the text will be used.
@@ -4499,8 +4711,12 @@ class Message(Object, Update):
                 Users will receive a notification with no sound.
 
             message_thread_id (``int``, *optional*):
-                Unique identifier for the target message thread (topic) of the forum.
-                for forum supergroups only.
+                Unique identifier of a message thread to which the message belongs.
+                For forums only.
+
+            direct_messages_chat_topic_id (``int``, *optional*):
+                Unique identifier of the topic in a channel direct messages chat administered by the current user.
+                For directs only.
 
             effect_id (``int``, *optional*):
                 Unique identifier of the message effect.
@@ -4545,6 +4761,9 @@ class Message(Object, Update):
         if message_thread_id is None:
             message_thread_id = self.message_thread_id
 
+        if direct_messages_chat_topic_id is None:
+            direct_messages_chat_topic_id = self.direct_messages_chat_topic_id
+
         if business_connection_id is None:
             business_connection_id = self.business_connection_id
 
@@ -4574,6 +4793,124 @@ class Message(Object, Update):
             quote_text=quote_text,
             quote_entities=quote_entities,
             quote_offset=quote_offset,
+        )
+
+    async def reply_checklist(
+        self,
+        checklist: "types.InputChecklist",
+        quote: bool = None,
+        disable_notification: Optional[bool] = None,
+        protect_content: Optional[bool] = None,
+        message_thread_id: Optional[int] = None,
+        effect_id: Optional[int] = None,
+        reply_parameters: Optional["types.ReplyParameters"] = None,
+        schedule_date: Optional[datetime] = None,
+        business_connection_id: Optional[str] = None,
+        paid_message_star_count: int = None,
+        reply_markup: Optional[
+            Union[
+                "types.InlineKeyboardMarkup",
+                "types.ReplyKeyboardMarkup",
+                "types.ReplyKeyboardRemove",
+                "types.ForceReply"
+            ]
+        ] = None,
+    ) -> "Message":
+        """Bound method *reply_checklist* of :obj:`~pyrogram.types.Message`.
+
+        Use as a shortcut for:
+
+        .. code-block:: python
+
+            await client.send_checklist(
+                chat_id=message.chat.id,
+                title="To do",
+                tasks=[
+                    types.InputChecklistTask(id=1, text="Task 1"),
+                    types.InputChecklistTask(id=2, text="Task 2")
+                ]
+            )
+
+        Example:
+            .. code-block:: python
+
+                await message.reply_checklist("To do", [
+                    types.InputChecklistTask(id=1, text="Task 1"),
+                    types.InputChecklistTask(id=2, text="Task 2")
+                ])
+
+        Parameters:
+            checklist (:obj:`~pyrogram.types.InputChecklist`):
+                Checklist to send.
+
+            quote (``bool``, *optional*):
+                If ``True``, the message will be sent as a reply to this message.
+                If *reply_parameters* is passed, this parameter will be ignored.
+                Defaults to ``True`` in group chats and ``False`` in private chats.
+
+            disable_notification (``bool``, *optional*):
+                Sends the message silently.
+                Users will receive a notification with no sound.
+
+            protect_content (``bool``, *optional*):
+                Protects the contents of the sent message from forwarding and saving.
+
+            message_thread_id (``int``, *optional*):
+                Unique identifier for the target message thread (topic) of the forum.
+                For supergroups only.
+
+            effect_id (``int``, *optional*):
+                Unique identifier of the message effect.
+                For private chats only.
+
+            reply_parameters (:obj:`~pyrogram.types.ReplyParameters`, *optional*):
+                Describes reply parameters for the message that is being sent.
+
+            schedule_date (:py:obj:`~datetime.datetime`, *optional*):
+                Date when the message will be automatically sent.
+
+            business_connection_id (``str``, *optional*):
+                Unique identifier of the business connection on behalf of which the message will be sent.
+
+            paid_message_star_count (``int``, *optional*):
+                The number of Telegram Stars the user agreed to pay to send the messages.
+
+            reply_markup (:obj:`~pyrogram.types.InlineKeyboardMarkup` | :obj:`~pyrogram.types.ReplyKeyboardMarkup` | :obj:`~pyrogram.types.ReplyKeyboardRemove` | :obj:`~pyrogram.types.ForceReply`, *optional*):
+                Additional interface options. An object for an inline keyboard, custom reply keyboard,
+                instructions to remove reply keyboard or to force a reply from the user.
+
+        Returns:
+            On success, the sent :obj:`~pyrogram.types.Message` is returned.
+
+        Raises:
+            RPCError: In case of a Telegram RPC error.
+        """
+        if quote is None:
+            quote = self.chat.type != enums.ChatType.PRIVATE
+
+        if reply_parameters is None and quote:
+            reply_parameters = types.ReplyParameters(
+                message_id=self.id
+            )
+
+        if message_thread_id is None:
+            message_thread_id = self.message_thread_id
+
+        if business_connection_id is None:
+            business_connection_id = self.business_connection_id
+
+        return await self._client.send_checklist(
+            chat_id=self.chat.id,
+            checklist=checklist,
+            disable_notification=disable_notification,
+            protect_content=protect_content,
+            message_thread_id=message_thread_id,
+            effect_id=effect_id,
+            reply_parameters=reply_parameters,
+            schedule_date=schedule_date,
+            business_connection_id=business_connection_id,
+            paid_message_star_count=paid_message_star_count,
+            reply_markup=reply_markup,
         )
 
     async def edit_text(
@@ -4739,6 +5076,62 @@ class Message(Object, Update):
             chat_id=self.chat.id,
             message_id=self.id,
             media=media,
+            reply_markup=reply_markup
+        )
+
+    async def edit_checklist(
+        self,
+        checklist: "types.InputChecklist",
+        business_connection_id: Optional[str] = None,
+        reply_markup: Optional["types.InlineKeyboardMarkup"] = None
+    ) -> "Message":
+        """Bound method *edit_checklist* of :obj:`~pyrogram.types.Message`.
+
+        Use as a shortcut for:
+
+        .. code-block:: python
+
+            await app.edit_message_checklist(
+                chat_id=chat_id,
+                message_id=message_id,
+                checklist=types.InputChecklist(
+                    title="Checklist",
+                    tasks=[
+                        types.InputChecklistTask(id=1, text="Task 1"),
+                        types.InputChecklistTask(id=2, text="Task 2")
+                    ]
+                )
+            )
+
+        Example:
+            .. code-block:: python
+
+                await message.edit_checklist(checklist)
+
+        Parameters:
+            checklist (:obj:`~pyrogram.types.InputChecklist`):
+                New checklist.
+
+            business_connection_id (``str``, *optional*):
+                Unique identifier of the business connection on behalf of which the message will be sent.
+
+            reply_markup (:obj:`~pyrogram.types.InlineKeyboardMarkup`, *optional*):
+                An InlineKeyboardMarkup object.
+
+        Returns:
+            On success, the edited :obj:`~pyrogram.types.Message` is returned.
+
+        Raises:
+            RPCError: In case of a Telegram RPC error.
+        """
+        if business_connection_id is None:
+            business_connection_id = self.business_connection_id
+
+        return await self._client.edit_message_checklist(
+            chat_id=self.chat.id,
+            message_id=self.id,
+            checklist=checklist,
+            business_connection_id=business_connection_id,
             reply_markup=reply_markup
         )
 
@@ -5098,7 +5491,6 @@ class Message(Object, Update):
                     game_short_name=self.game.short_name,
                     disable_notification=disable_notification,
                     allow_paid_broadcast=allow_paid_broadcast,
-                    paid_message_star_count=paid_message_star_count,
                     message_thread_id=message_thread_id
                 )
             else:
@@ -5254,16 +5646,18 @@ class Message(Object, Update):
                 Defaults to True.
 
         Returns:
-            True on success, False otherwise.
+            ``bool``: True on success, False otherwise.
 
         Raises:
             RPCError: In case of a Telegram RPC error.
         """
-        return await self._client.delete_messages(
+        r = await self._client.delete_messages(
             chat_id=self.chat.id,
             message_ids=self.id,
             revoke=revoke
         )
+
+        return bool(r)
 
     async def click(
         self,
@@ -5636,7 +6030,7 @@ class Message(Object, Update):
             options=option
         )
 
-    async def pin(self, disable_notification: bool = False, both_sides: bool = False) -> "types.Message":
+    async def pin(self, disable_notification: bool = False, both_sides: bool = False) -> Optional["types.Message"]:
         """Bound method *pin* of :obj:`~pyrogram.types.Message`.
 
         Use as a shortcut for:
@@ -5759,16 +6153,23 @@ class Message(Object, Update):
             message_id=self.id
         )
 
-    async def pay(self) -> List[Union["types.Photo", "types.Video"]]:
+    async def pay(self) -> "types.PaymentResult":
         """Bound method *pay* of :obj:`~pyrogram.types.Message`.
 
         Use as a shortcut for:
 
         .. code-block:: python
 
-            await client.send_payment_form(
-                chat_id=message.chat.id,
-                message_id=message_id
+            invoice = types.InputInvoiceMessage(
+                    chat_id=chat_id,
+                    message_id=123
+                )
+
+            form = await app.get_payment_form(invoice)
+
+            await app.send_payment_form(
+                payment_form_id=form.id,
+                input_invoice=invoice
             )
 
         Example:
@@ -5777,9 +6178,16 @@ class Message(Object, Update):
                 await message.pay()
 
         Returns:
-            List of :obj:`~pyrogram.types.Photo` | :obj:`~pyrogram.types.Video`: On success, the list of bought photos and videos is returned.
+            :obj:`~pyrogram.types.PaymentResult`: On success, the payment result is returned.
         """
-        return await self._client.send_payment_form(
+        invoice = types.InputInvoiceMessage(
             chat_id=self.chat.id,
             message_id=self.id
+        )
+
+        form = await self._client.get_payment_form(invoice)
+
+        return await self._client.send_payment_form(
+            payment_form_id=form.id,
+            input_invoice=invoice
         )

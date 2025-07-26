@@ -33,6 +33,7 @@ class SendInlineBotResult:
         result_id: str,
         disable_notification: Optional[bool] = None,
         message_thread_id: Optional[int] = None,
+        direct_messages_chat_topic_id: int = None,
         reply_parameters: Optional["types.ReplyParameters"] = None,
         paid_message_star_count: int = None,
         schedule_date: datetime = None,
@@ -68,7 +69,11 @@ class SendInlineBotResult:
 
             message_thread_id (``int``, *optional*):
                 Unique identifier of a message thread to which the message belongs.
-                For supergroups only.
+                For forums only.
+
+            direct_messages_chat_topic_id (``int``, *optional*):
+                Unique identifier of the topic in a channel direct messages chat administered by the current user.
+                For directs only only.
 
             reply_parameters (:obj:`~pyrogram.types.ReplyParameters`, *optional*):
                 Describes reply parameters for the message that is being sent.
@@ -153,21 +158,14 @@ class SendInlineBotResult:
                 reply_to=await utils.get_reply_to(
                     self,
                     reply_parameters,
-                    message_thread_id
+                    message_thread_id,
+                    direct_messages_chat_topic_id
                 ),
                 schedule_date=utils.datetime_to_timestamp(schedule_date),
                 allow_paid_stars=paid_message_star_count
             )
         )
 
-        for i in r.updates:
-            if isinstance(i, (raw.types.UpdateNewMessage,
-                              raw.types.UpdateNewChannelMessage,
-                              raw.types.UpdateNewScheduledMessage)):
-                return await types.Message._parse(
-                    self, i.message,
-                    {i.id: i for i in r.users},
-                    {i.id: i for i in r.chats},
-                    is_scheduled=isinstance(i, raw.types.UpdateNewScheduledMessage),
-                    business_connection_id=getattr(i, "connection_id", None)
-                )
+        messages = await utils.parse_messages(client=self, messages=r)
+
+        return messages[0] if messages else None

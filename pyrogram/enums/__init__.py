@@ -33,6 +33,7 @@ from .messages_filter import MessagesFilter
 from .next_code_type import NextCodeType
 from .paid_reaction_privacy import PaidReactionPrivacy
 from .parse_mode import ParseMode
+from .payment_form_type import PaymentFormType
 from .phone_call_discard_reason import PhoneCallDiscardReason
 from .poll_type import PollType
 from .privacy_key import PrivacyKey
@@ -40,7 +41,10 @@ from .privacy_rule_type import PrivacyRuleType
 from .profile_color import ProfileColor
 from .reply_color import ReplyColor
 from .sent_code_type import SentCodeType
+from .sticker_type import StickerType
 from .gift_attribute_type import GiftAttributeType
+from .gift_for_resale_order import GiftForResaleOrder
+from .mask_point_type import MaskPointType
 from .media_area_type import MediaAreaType
 from .stories_privacy_rules import StoriesPrivacyRules
 from .user_status import UserStatus
@@ -63,6 +67,7 @@ __all__ = [
     'NextCodeType',
     'PaidReactionPrivacy',
     'ParseMode',
+    'PaymentFormType',
     'PhoneCallDiscardReason',
     'PollType',
     'PrivacyKey',
@@ -70,7 +75,10 @@ __all__ = [
     'ProfileColor',
     'ReplyColor',
     'SentCodeType',
+    'StickerType',
     'GiftAttributeType',
+    'GiftForResaleOrder',
+    'MaskPointType',
     'MediaAreaType',
     'StoriesPrivacyRules',
     'UserStatus'

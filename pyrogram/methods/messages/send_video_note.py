@@ -28,6 +28,9 @@ from pyrogram.file_id import FileType
 
 log = logging.getLogger(__name__)
 
+# Maximum file size for local video note (10 MB)
+_MAX_VIDEO_NOTE_SIZE_BYTES: int = 10 * 1024 * 1024
+
 class SendVideoNote:
     async def send_video_note(
         self: "pyrogram.Client",
@@ -38,6 +41,7 @@ class SendVideoNote:
         thumb: Union[str, BinaryIO] = None,
         disable_notification: bool = None,
         message_thread_id: int = None,
+        direct_messages_chat_topic_id: int = None,
         effect_id: int = None,
         reply_parameters: "types.ReplyParameters" = None,
         schedule_date: datetime = None,
@@ -79,6 +83,10 @@ class SendVideoNote:
                 pass a file path as string to upload a new video note that exists on your local machine, or
                 pass a binary file-like object with its attribute ".name" set for in-memory uploads.
                 Sending video notes by a URL is currently unsupported.
+                
+                .. note::
+                    When uploading from local file: if the file is larger than 10 MB, Telegram will upload 
+                    it as a regular video instead of a video note.
 
             duration (``int``, *optional*):
                 Duration of sent video in seconds.
@@ -98,7 +106,11 @@ class SendVideoNote:
 
             message_thread_id (``int``, *optional*):
                 Unique identifier for the target message thread (topic) of the forum.
-                For supergroups only.
+                For forums only.
+
+            direct_messages_chat_topic_id (``int``, *optional*):
+                Unique identifier of the topic in a channel direct messages chat administered by the current user.
+                For directs only only.
 
             effect_id (``int``, *optional*):
                 Unique identifier of the message effect.
@@ -233,6 +245,16 @@ class SendVideoNote:
         try:
             if isinstance(video_note, str):
                 if os.path.isfile(video_note):
+
+                    # Notify user why the sent video is not video note
+                    file_size = os.path.getsize(video_note)
+                    if file_size > _MAX_VIDEO_NOTE_SIZE_BYTES:
+                        log.warning(
+                           "Video note file size (%.1f MB) exceeds 10 MB limit. "
+                           "Telegram will treat it as a regular video instead of a video note.",
+                           file_size / (1024 * 1024),
+                        )
+
                     thumb = await self.save_file(thumb)
                     file = await self.save_file(video_note, progress=progress, progress_args=progress_args)
                     media = raw.types.InputMediaUploadedDocument(
@@ -280,7 +302,8 @@ class SendVideoNote:
                             reply_to=await utils.get_reply_to(
                                 self,
                                 reply_parameters,
-                                message_thread_id
+                                message_thread_id,
+                                direct_messages_chat_topic_id
                             ),
                             random_id=self.rnd_id(),
                             schedule_date=utils.datetime_to_timestamp(schedule_date),
@@ -296,17 +319,8 @@ class SendVideoNote:
                 except FilePartMissing as e:
                     await self.save_file(video_note, file_id=file.id, file_part=e.value)
                 else:
-                    for i in r.updates:
-                        if isinstance(i, (raw.types.UpdateNewMessage,
-                                          raw.types.UpdateNewChannelMessage,
-                                          raw.types.UpdateNewScheduledMessage,
-                                          raw.types.UpdateBotNewBusinessMessage)):
-                            return await types.Message._parse(
-                                self, i.message,
-                                {i.id: i for i in r.users},
-                                {i.id: i for i in r.chats},
-                                is_scheduled=isinstance(i, raw.types.UpdateNewScheduledMessage),
-                                business_connection_id=getattr(i, "connection_id", None)
-                            )
+                    messages = await utils.parse_messages(client=self, messages=r)
+
+                    return messages[0] if messages else None
         except StopTransmission:
             return None

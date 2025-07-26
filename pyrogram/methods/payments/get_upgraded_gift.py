@@ -16,8 +16,6 @@
 #  You should have received a copy of the GNU Lesser General Public License
 #  along with Pyrogram.  If not, see <http://www.gnu.org/licenses/>.
 
-import re
-
 import pyrogram
 from pyrogram import raw, types
 
@@ -26,7 +24,7 @@ class GetUpgradedGift:
     async def get_upgraded_gift(
         self: "pyrogram.Client",
         link: str
-    ):
+    ) -> "types.Gift":
         """Get information about upgraded gift.
 
         .. include:: /_includes/usable-by/users.rst
@@ -47,7 +45,7 @@ class GetUpgradedGift:
                 # Get information about upgraded gift by slug
                 gift = await client.get_upgraded_gift("SignetRing-903")
         """
-        match = re.match(r"^(?:https?://)?(?:www\.)?(?:t(?:elegram)?\.(?:org|me|dog)/(?:nft/|\+))([\w-]+)$", link)
+        match = self.UPGRADED_GIFT_RE.match(link)
 
         if match:
             slug = match.group(1)

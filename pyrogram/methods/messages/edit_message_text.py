@@ -85,10 +85,14 @@ class EditMessageText:
                 await app.edit_message_text(chat_id, message_id, "new text")
 
                 # Take the same text message, remove the web page preview only
+                from pyrogram import types
+                
                 await app.edit_message_text(
                     chat_id, message_id, message.text,
-                    disable_web_page_preview=True)
+                    link_preview_options=types.LinkPreviewOptions(is_disabled=True))
         """
+        link_preview_options = link_preview_options or self.link_preview_options
+
         if disable_web_page_preview is not None:
             log.warning(
                 "`disable_web_page_preview` is deprecated and will be removed in future updates. Use `link_preview_options` instead."

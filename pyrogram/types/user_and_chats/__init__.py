@@ -16,10 +16,10 @@
 #  You should have received a copy of the GNU Lesser General Public License
 #  along with Pyrogram.  If not, see <http://www.gnu.org/licenses/>.
 
-from .allowed_gifts_settings import AllowedGiftsSettings
+from .accepted_gift_types import AcceptedGiftTypes
 from .birthday import Birthday
 from .bot_verification import BotVerification
-from .business_bot_permissions import BusinessBotPermissions
+from .business_bot_rights import BusinessBotRights
 from .business_connection import BusinessConnection
 from .business_intro import BusinessIntro
 from .business_recipients import BusinessRecipients
@@ -55,16 +55,17 @@ from .restriction import Restriction
 from .stories_stealth_mode import StoriesStealthMode
 from .user import User
 from .username import Username
+from .verification_status import VerificationStatus
 from .video_chat_ended import VideoChatEnded
 from .video_chat_members_invited import VideoChatMembersInvited
 from .video_chat_scheduled import VideoChatScheduled
 from .video_chat_started import VideoChatStarted
 
 __all__ = [
-    "AllowedGiftsSettings",
+    "AcceptedGiftTypes",
     "Birthday",
     "BotVerification",
-    "BusinessBotPermissions",
+    "BusinessBotRights",
     "BusinessConnection",
     "BusinessIntro",
     "BusinessRecipients",
@@ -77,6 +78,7 @@ __all__ = [
     "Dialog",
     "User",
     "Username",
+    "VerificationStatus",
     "Restriction",
     "StoriesStealthMode",
     "ChatEvent",
