@@ -149,7 +149,7 @@ class Session:
         """Set session state"""
         async with self._state_lock:
             old_state = self._state
-            self._state = new_state
+             = new_state
 
             log.debug("Session state changed: %s -> %s", old_state.name, new_state.name)
 
