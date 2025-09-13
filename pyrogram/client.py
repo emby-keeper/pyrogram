@@ -25,36 +25,40 @@ import platform
 import re
 import shutil
 import sys
+import time
 from concurrent.futures.thread import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from hashlib import sha256
 from importlib import import_module
-from io import StringIO, BytesIO
+from io import BytesIO, StringIO
 from mimetypes import MimeTypes
 from pathlib import Path
-from typing import Union, List, Optional, Callable, AsyncGenerator, Type, Tuple
+from typing import AsyncGenerator, Callable, List, Optional, Type, Union
 
 import pyrogram
-from pyrogram import __version__, __license__
-from pyrogram import enums
-from pyrogram import raw
-from pyrogram import utils
+from pyrogram import __license__, __version__, enums, raw, utils
 from pyrogram.crypto import aes
-from pyrogram.errors import CDNFileHashMismatch
 from pyrogram.errors import (
+    AuthBytesInvalid,
+    BadRequest,
+    CDNFileHashMismatch,
+    ChannelPrivate,
+    FloodPremiumWait,
+    FloodWait,
+    PersistentTimestampInvalid,
+    PersistentTimestampOutdated,
     SessionPasswordNeeded,
-    VolumeLocNotFound, ChannelPrivate,
-    BadRequest, AuthBytesInvalid,
-    FloodWait, FloodPremiumWait,
-    ChannelInvalid, PersistentTimestampInvalid, PersistentTimestampOutdated
+    Unauthorized,
+    VolumeLocNotFound,
 )
 from pyrogram.handlers.handler import Handler
 from pyrogram.methods import Methods
-from pyrogram.session import Auth, Session
-from pyrogram.storage import Storage, FileStorage, MemoryStorage
-from pyrogram.types import User, TermsOfService, LinkPreviewOptions
-from pyrogram.utils import MIN_MONOFORUM_CHANNEL_ID, ainput
 from pyrogram.qrlogin import QRLogin
+from pyrogram.session import Auth, Session
+from pyrogram.storage import SQLiteStorage, Storage
+from pyrogram.types import LinkPreviewOptions, TermsOfService, User
+from pyrogram.utils import ainput
+
 from .connection import Connection
 from .connection.transport import TCP, TCPAbridged
 from .dispatcher import Dispatcher
@@ -107,6 +111,9 @@ class Client(Methods):
 
         ipv6 (``bool``, *optional*):
             Pass True to connect to Telegram using IPv6.
+            If the session was previously used with IPv4,
+            the first request will be made via IPv4,
+            after which the server address will be updated (works both ways).
             Defaults to False (IPv4).
 
         proxy (``dict``, *optional*):
@@ -226,10 +233,14 @@ class Client(Methods):
             Pass True to automatically fetch stories if they are missing.
             Defaults to True.
 
+        fetch_stickers (``bool``, *optional*):
+            Pass True to automatically fetch names of sticker sets.
+            Defaults to True.
+
         loop (:py:class:`asyncio.AbstractEventLoop`, *optional*):
             Event loop.
 
-        init_connection_params (:obj:`~pyrogram.raw.base.JSONValue`, *optional*):
+        init_connection_params (``dict``, *optional*):
             Additional initConnection parameters.
             For now, only the tz_offset field is supported, for specifying timezone offset in seconds.
     """
@@ -297,7 +308,8 @@ class Client(Methods):
         fetch_replies: Optional[bool] = True,
         fetch_topics: Optional[bool] = True,
         fetch_stories: Optional[bool] = True,
-        init_connection_params: Optional["raw.base.JSONValue"] = None,
+        fetch_stickers: Optional[bool] = True,
+        init_connection_params: Optional[dict] = None,
         connection_factory: Type[Connection] = Connection,
         protocol_factory: Type[TCP] = TCPAbridged,
         loop: Optional[asyncio.AbstractEventLoop] = None
@@ -339,6 +351,7 @@ class Client(Methods):
         self.fetch_replies = fetch_replies
         self.fetch_topics = fetch_topics
         self.fetch_stories = fetch_stories
+        self.fetch_stickers = fetch_stickers
         self.init_connection_params = init_connection_params
         self.connection_factory = connection_factory
         self.protocol_factory = protocol_factory
@@ -348,17 +361,26 @@ class Client(Methods):
         self.storage: Storage
 
         if self.session_string:
-            self.storage = MemoryStorage(self.name, self.session_string)
+            self.storage = SQLiteStorage(
+                self.name,
+                workdir=self.workdir,
+                session_string=self.session_string,
+                in_memory=True
+            )
         elif self.in_memory:
-            self.storage = MemoryStorage(self.name)
+            self.storage = SQLiteStorage(self.name, workdir=self.workdir, in_memory=True)
         elif isinstance(storage_engine, Storage):
             self.storage = storage_engine
         else:
-            self.storage = FileStorage(self.name, self.workdir)
+            self.storage = SQLiteStorage(self.name, workdir=self.workdir)
 
         self.dispatcher: Dispatcher = Dispatcher(self)
 
         self.rnd_id = MsgId
+        self._last_sync_time = time.time()
+        self._last_monotonic = time.monotonic()
+
+        self._is_server_time_synced = False
 
         self.parser: Parser = Parser(self)
 
@@ -367,10 +389,8 @@ class Client(Methods):
         self.business_connections = {}
 
         self.sessions = {}
-        self.sessions_lock = asyncio.Lock()
-
         self.media_sessions = {}
-        self.media_sessions_lock = asyncio.Lock()
+        self.sessions_lock = asyncio.Lock()
 
         self.save_file_semaphore = asyncio.Semaphore(self.max_concurrent_transmissions)
         self.get_file_semaphore = asyncio.Semaphore(self.max_concurrent_transmissions)
@@ -401,6 +421,8 @@ class Client(Methods):
             self.loop = loop
         else:
             self.loop = asyncio.get_event_loop()
+
+        self.__config: "raw.types.Config" = None
 
     def __enter__(self):
         return self.start()
@@ -469,16 +491,65 @@ class Client(Methods):
             else:
                 break
 
-        sent_code_descriptions = {
-            enums.SentCodeType.APP: "Telegram app",
-            enums.SentCodeType.SMS: "SMS",
-            enums.SentCodeType.CALL: "phone call",
-            enums.SentCodeType.FLASH_CALL: "phone flash call",
-            enums.SentCodeType.FRAGMENT_SMS: "Fragment SMS",
-            enums.SentCodeType.EMAIL_CODE: "email code"
-        }
+        if sent_code.type == enums.SentCodeType.SETUP_EMAIL_REQUIRED:
+            print("Setup email required for authorization")
 
-        print(f"The confirmation code has been sent via {sent_code_descriptions[sent_code.type]}")
+            while True:
+                try:
+                    while True:
+                        email = await ainput("Enter email: ", loop=self.loop)
+
+                        if not email:
+                            continue
+
+                        confirm = await ainput(f'Is "{email}" correct? (y/N): ', loop=self.loop)
+
+                        if confirm.lower() == "y":
+                            break
+
+                    await self.invoke(
+                        raw.functions.account.SendVerifyEmailCode(
+                            purpose=raw.types.EmailVerifyPurposeLoginSetup(
+                                phone_number=self.phone_number,
+                                phone_code_hash=sent_code.phone_code_hash,
+                            ),
+                            email=email,
+                        )
+                    )
+
+                    email_code = await ainput("Enter confirmation code: ", loop=self.loop)
+
+                    email_sent_code = await self.invoke(
+                        raw.functions.account.VerifyEmail(
+                            purpose=raw.types.EmailVerifyPurposeLoginSetup(
+                                phone_number=self.phone_number,
+                                phone_code_hash=sent_code.phone_code_hash,
+                            ),
+                            verification=raw.types.EmailVerificationCode(code=email_code),
+                        )
+                    )
+
+                    if isinstance(email_sent_code, raw.types.account.EmailVerifiedLogin):
+                        if isinstance(email_sent_code.sent_code, raw.types.auth.SentCodePaymentRequired):
+                            raise Unauthorized(
+                                "You need to pay for or purchase premium to continue authorization "
+                                "process, which is currently not supported by Pyrogram."
+                            )
+                except BadRequest as e:
+                    print(e.MESSAGE)
+                else:
+                    break
+        else:
+            sent_code_descriptions = {
+                enums.SentCodeType.APP: "Telegram app",
+                enums.SentCodeType.SMS: "SMS",
+                enums.SentCodeType.CALL: "phone call",
+                enums.SentCodeType.FLASH_CALL: "phone flash call",
+                enums.SentCodeType.FRAGMENT_SMS: "Fragment",
+                enums.SentCodeType.EMAIL_CODE: "email code"
+            }
+
+            print(f"The confirmation code has been sent via {sent_code_descriptions[sent_code.type]}")
 
         while True:
             if not self.phone_code:
@@ -496,7 +567,7 @@ class Client(Methods):
                     print("Password hint: {}".format(await self.get_password_hint()))
 
                     if not self.password:
-                        self.password = await ainput("Enter password (empty to recover): ", hide=self.hide_password, loop=self.loop)
+                        self.password = await ainput("Enter 2FA password (empty to recover): ", hide=self.hide_password, loop=self.loop)
 
                     try:
                         if not self.password:
@@ -551,12 +622,29 @@ class Client(Methods):
 
         return signed_up
 
-    async def authorize_qr(self, except_ids: List[int] = []) -> User:
+    async def authorize_qr(self, except_ids: List[int] = []) -> "User":
         from qrcode import QRCode
+
         qr_login = QRLogin(self, except_ids)
+        await qr_login.recreate()
+
+        qr = QRCode(version=1)
 
         while True:
             try:
+                print(
+                    "\x1b[2J\n"
+                    f"Welcome to Pyrogram (version {__version__})\n"
+                    "Pyrogram is free software and comes with ABSOLUTELY NO WARRANTY. Licensed\n"
+                    f"under the terms of the {__license__}.\n"
+                    "Scan the QR code below to login\n"
+                    "Settings -> Privacy and Security -> Active Sessions -> Scan QR Code.",
+                    flush=True
+                )
+
+                qr.clear()
+                qr.add_data(qr_login.url)
+                qr.print_ascii(tty=True)
                 log.info("Waiting for QR code being scanned.")
 
                 signed_in = await qr_login.wait()
@@ -567,21 +655,42 @@ class Client(Methods):
             except asyncio.TimeoutError:
                 log.info("Recreating QR code.")
                 await qr_login.recreate()
-                print("\x1b[2J")
-                print(f"Welcome to Pyrogram (version {__version__})")
-                print(f"Pyrogram is free software and comes with ABSOLUTELY NO WARRANTY. Licensed\n"
-                      f"under the terms of the {__license__}.\n")
-                print("Scan the QR code below to login")
-                print("Settings -> Privacy and Security -> Active Sessions -> Scan QR Code.\n")
+            except SessionPasswordNeeded as e:
+                print(e.MESSAGE)
 
-                qrcode = QRCode(version=1)
-                qrcode.add_data(qr_login.url)
-                qrcode.print_ascii(invert=True)
-            except SessionPasswordNeeded:
-                print(f"Password hint: {await self.get_password_hint()}")
-                return await self.check_password(
-                    await ainput("Enter 2FA password: ", hide=self.hide_password, loop=self.loop)
-                )
+                while True:
+                    print("Password hint: {}".format(await self.get_password_hint()))
+
+                    if not self.password:
+                        self.password = await ainput("Enter 2FA password (empty to recover): ", hide=self.hide_password, loop=self.loop)
+
+                    try:
+                        if not self.password:
+                            confirm = await ainput("Confirm password recovery (y/N): ", loop=self.loop)
+
+                            if confirm.lower() == "y":
+                                email_pattern = await self.send_recovery_code()
+                                print(f"The recovery code has been sent to {email_pattern}")
+
+                                while True:
+                                    recovery_code = await ainput("Enter recovery code: ", loop=self.loop)
+
+                                    try:
+                                        return await self.recover_password(recovery_code)
+                                    except BadRequest as e:
+                                        print(e.MESSAGE)
+                                    except Exception as e:
+                                        log.exception(e)
+                                        raise
+                            else:
+                                self.password = None
+                        else:
+                            return await self.check_password(self.password)
+                    except BadRequest as e:
+                        print(e.MESSAGE)
+                        self.password = None
+            else:
+                break
 
     def set_parse_mode(self, parse_mode: Optional["enums.ParseMode"]):
         """Set the parse mode to be used globally by the client.
@@ -651,7 +760,7 @@ class Client(Methods):
             elif isinstance(peer, raw.types.Channel):
                 peer_id = utils.get_channel_id(peer.id)
                 access_hash = peer.access_hash
-                peer_type = "channel" if peer.broadcast else "supergroup"
+                peer_type = "direct" if peer.monoforum else "channel" if peer.broadcast else "forum" if peer.forum else "supergroup"
 
                 if peer.username:
                     usernames.append(peer.username.lower())
@@ -665,10 +774,14 @@ class Client(Methods):
                 continue
 
             parsed_peers.append((peer_id, access_hash, peer_type, phone_number))
-            parsed_usernames.append((peer_id, usernames))
+
+            if usernames:
+                parsed_usernames.append((peer_id, usernames))
 
         await self.storage.update_peers(parsed_peers)
-        await self.storage.update_usernames(parsed_usernames)
+
+        if parsed_usernames:
+            await self.storage.update_usernames(parsed_usernames)
 
         return is_min
 
@@ -775,146 +888,6 @@ class Client(Methods):
         elif isinstance(updates, raw.types.UpdatesTooLong):
             log.info(updates)
 
-    async def recover_gaps(self) -> Tuple[int, int]:
-        if self.skip_updates:
-            log.info("Recover gaps disabled in client params. Skipping recovery")
-            return (0, 0)
-
-        states = await self.storage.update_state()
-
-        if not states:
-            log.info("No states found, skipping recovery")
-            return (0, 0)
-
-        message_updates_counter = 0
-        other_updates_counter = 0
-
-        log.info("Started gaps recovering...")
-
-        for local_state in states:
-            id, local_pts, local_qts, local_date, local_seq = local_state
-
-            prev_pts = 0
-
-            while True:
-                try:
-                    diff = await self.invoke(
-                        raw.functions.updates.GetChannelDifference(
-                            channel=await self.resolve_peer(id),
-                            filter=raw.types.ChannelMessagesFilterEmpty(),
-                            pts=local_pts,
-                            limit=10000,
-                            force=False
-                        ) if id < 0 or id > MIN_MONOFORUM_CHANNEL_ID else
-                        raw.functions.updates.GetDifference(
-                            pts=local_pts,
-                            date=local_date,
-                            qts=0
-                        )
-                    )
-                except (ChannelPrivate, ChannelInvalid, PersistentTimestampOutdated, PersistentTimestampInvalid):
-                    break
-
-                if isinstance(diff, raw.types.updates.DifferenceEmpty):
-                    await self.storage.update_state(
-                        (
-                            id,
-                            local_pts,
-                            None,
-                            diff.date,
-                            diff.seq
-                        )
-                    )
-                    break
-                elif isinstance(diff, raw.types.updates.DifferenceTooLong):
-                    await self.storage.update_state(
-                        (
-                            id,
-                            diff.pts,
-                            None,
-                            local_date,
-                            local_seq
-                        )
-                    )
-                    continue
-                elif isinstance(diff, raw.types.updates.Difference):
-                    local_pts = diff.state.pts
-                    local_date = diff.state.date
-                    local_seq = diff.state.seq
-                elif isinstance(diff, raw.types.updates.DifferenceSlice):
-                    local_pts = diff.intermediate_state.pts
-                    local_date = diff.intermediate_state.date
-                    local_seq = diff.intermediate_state.seq
-
-                    if prev_pts == local_pts:
-                        break
-
-                    prev_pts = local_pts
-                elif isinstance(diff, raw.types.updates.ChannelDifferenceEmpty):
-                    await self.storage.update_state(
-                        (
-                            id,
-                            diff.pts,
-                            None,
-                            local_date,
-                            local_seq
-                        )
-                    )
-                    break
-                elif isinstance(diff, raw.types.updates.ChannelDifferenceTooLong):
-                    await self.storage.update_state(
-                        (
-                            id,
-                            diff.dialog.pts,
-                            None,
-                            local_date,
-                            local_seq
-                        )
-                    )
-                    continue
-                elif isinstance(diff, raw.types.updates.ChannelDifference):
-                    local_pts = diff.pts
-
-                users = {i.id: i for i in diff.users}
-                chats = {i.id: i for i in diff.chats}
-
-                for message in diff.new_messages:
-                    message_updates_counter += 1
-                    self.dispatcher.updates_queue.put_nowait(
-                        (
-                            raw.types.UpdateNewMessage(
-                                message=message,
-                                pts=local_pts,
-                                pts_count=-1
-                            ),
-                            users,
-                            chats
-                        )
-                    )
-
-                for update in diff.other_updates:
-                    other_updates_counter += 1
-                    self.dispatcher.updates_queue.put_nowait(
-                        (update, users, chats)
-                    )
-
-                if isinstance(diff, (raw.types.updates.Difference, raw.types.updates.ChannelDifference)):
-                    break
-
-            await self.storage.update_state(
-                (
-                    id,
-                    local_pts,
-                    None,
-                    local_date,
-                    local_seq
-                )
-            )
-
-
-        log.info("Recovered %s messages and %s updates", message_updates_counter, other_updates_counter)
-        return (message_updates_counter, other_updates_counter)
-
     async def load_session(self):
         await self.storage.open()
 
@@ -933,12 +906,23 @@ class Client(Methods):
             await self.storage.api_id(self.api_id)
 
             await self.storage.dc_id(2)
+
+            if self.test_mode:
+                await self.storage.server_address("2001:67c:4e8:f002::e" if self.ipv6 else "149.154.167.40")
+                await self.storage.port(80)
+            else:
+                await self.storage.server_address("2001:67c:4e8:f002::a" if self.ipv6 else "149.154.167.51")
+                await self.storage.port(443)
+
             await self.storage.date(0)
 
             await self.storage.test_mode(self.test_mode)
             await self.storage.auth_key(
                 await Auth(
-                    self, await self.storage.dc_id(),
+                    self,
+                    await self.storage.dc_id(),
+                    await self.storage.server_address(),
+                    await self.storage.port(),
                     await self.storage.test_mode()
                 ).create()
             )
@@ -1171,10 +1155,20 @@ class Client(Methods):
             try:
                 session = self.media_sessions.get(dc_id)
                 if not session:
+                    dc_option = await self.get_dc_option(dc_id, is_media=True, ipv6=self.ipv6)
+
                     session = self.media_sessions[dc_id] = Session(
-                        self, dc_id,
-                        await Auth(self, dc_id, await self.storage.test_mode()).create()
-                        if dc_id != await self.storage.dc_id()
+                        self,
+                        dc_id,
+                        dc_option.ip_address,
+                        dc_option.port,
+                        await Auth(
+                            self,
+                            dc_id,
+                            dc_option.ip_address,
+                            dc_option.port,
+                            await self.storage.test_mode()
+                        ).create() if dc_id != await self.storage.dc_id()
                         else await self.storage.auth_key(),
                         await self.storage.test_mode(),
                         is_media=True
@@ -1249,9 +1243,23 @@ class Client(Methods):
                         )
 
                 elif isinstance(r, raw.types.upload.FileCdnRedirect):
+                    dc_option = await self.get_dc_option(dc_id, is_cdn=True, ipv6=self.ipv6)
+
                     cdn_session = Session(
-                        self, r.dc_id, await Auth(self, r.dc_id, await self.storage.test_mode()).create(),
-                        await self.storage.test_mode(), is_media=True, is_cdn=True
+                        self,
+                        r.dc_id,
+                        dc_option.ip_address,
+                        dc_option.port,
+                        await Auth(
+                            self,
+                            r.dc_id,
+                            dc_option.ip_address,
+                            dc_option.port,
+                            await self.storage.test_mode()
+                        ).create(),
+                        await self.storage.test_mode(),
+                        is_media=True,
+                        is_cdn=True
                     )
 
                     try:
@@ -1336,6 +1344,195 @@ class Client(Methods):
                 raise
             except Exception as e:
                 log.exception(e)
+
+    async def get_session(
+        self,
+        dc_id: int,
+        is_media: Optional[bool] = False,
+        export_authorization: Optional[bool] = True,
+        server_address: Optional[str] = None,
+        port: Optional[int] = None
+    ) -> "Session":
+        """Get existing session or create a new one.
+
+        Parameters:
+            dc_id (``int``):
+                Datacenter identifier.
+
+            is_media (``bool``, *optional*):
+                Pass True to get or create a media session.
+
+            export_authorization (``bool``, *optional*):
+                Pass True to export authorization after creating the session.
+                Used only when creating a new session.
+
+            server_address (``str``, *optional*):
+                Custom server address to connect to.
+                Used only when creating a new session.
+
+            port (``int``, *optional*):
+                Custom port to connect to.
+                Used only when creating a new session.
+        """
+        if dc_id == await self.storage.dc_id() and not is_media:
+            return self.session
+
+        sessions = self.media_sessions if is_media else self.sessions
+
+        async with self.sessions_lock:
+            if sessions.get(dc_id):
+                return sessions[dc_id]
+
+            dc_option = await self.get_dc_option(dc_id, is_media=is_media, ipv6=self.ipv6)
+
+            session = self.media_sessions[dc_id] = Session(
+                self,
+                dc_id,
+                server_address or dc_option.ip_address,
+                port or dc_option.port,
+                await Auth(
+                    self,
+                    dc_id,
+                    server_address or dc_option.ip_address,
+                    port or dc_option.port,
+                    await self.storage.test_mode()
+                ).create(),
+                await self.storage.test_mode(), is_media=is_media
+            )
+
+            await session.start()
+
+            if export_authorization:
+                for _ in range(3):
+                    exported_auth = await self.invoke(
+                        raw.functions.auth.ExportAuthorization(
+                            dc_id=dc_id
+                        )
+                    )
+
+                    try:
+                        await session.invoke(
+                            raw.functions.auth.ImportAuthorization(
+                                id=exported_auth.id,
+                                bytes=exported_auth.bytes
+                            )
+                        )
+                    except AuthBytesInvalid:
+                        continue
+                    else:
+                        break
+                else:
+                    await session.stop()
+                    raise AuthBytesInvalid
+
+            return session
+
+    async def get_dc_option(
+        self,
+        dc_id: int = None,
+        is_media: bool = False,
+        is_cdn: bool = False,
+        ipv6: bool = False
+    ) -> "raw.types.DcOption":
+        if not self.__config:
+            self.__config = await self.invoke(raw.functions.help.GetConfig())
+
+        if dc_id is None:
+            dc_id = self.__config.this_dc
+
+        options = [dc for dc in self.__config.dc_options if dc.id == dc_id and dc.ipv6 == ipv6] # type: List[raw.types.DcOption]
+
+        if not options:
+            raise ValueError(f"DC{dc_id} not found")
+
+        if is_cdn:
+            cdn_options = [dc for dc in options if dc.cdn]
+
+            if cdn_options:
+                return cdn_options[0]
+
+            log.debug(
+                "No CDN datacenter found for DC%s, falling back to prod DC",
+                dc_id
+            )
+
+            is_media = True
+
+        if is_media:
+            media_options = [dc for dc in options if dc.media_only]
+
+            if media_options:
+                return media_options[0]
+
+            log.debug(
+                "No media datacenter found for DC%s, falling back to prod DC",
+                dc_id
+            )
+
+        prod_options = [dc for dc in options if not dc.media_only]
+
+        if prod_options:
+            return prod_options[0]
+
+        raise ValueError("No suitable DC found")
+
+    async def set_dc(
+        self,
+        dc_id: Optional[int] = None,
+        server_address: Optional[str] = None,
+        port: Optional[int] = None
+    ):
+        """Set configuration for the specified datacenter.
+
+        .. note::
+
+            Be careful with this method, you can easily break your session.
+
+        Parameters:
+            dc_id (``int``, *optional*):
+                Datacenter identifier.
+                Defaults to the current datacenter.
+
+            server_address (``str``, *optional*):
+                Custom server address.
+
+            port (``int``, *optional*):
+                Custom port.
+        """
+        if not self.__config:
+            self.__config = await self.invoke(raw.functions.help.GetConfig())
+
+        dc_id = dc_id or self.__config.this_dc
+        dc_option = await self.get_dc_option(dc_id, ipv6=self.ipv6)
+
+        server_address = server_address or dc_option.ip_address
+        port = port or dc_option.port
+
+        await self.storage.dc_id(dc_id)
+        await self.storage.server_address(server_address)
+        await self.storage.port(port)
+
+        if self.session.server_address != server_address or self.session.port != port:
+            self.session.server_address = server_address
+            self.session.port = port
+
+            await self.session.restart()
+            log.info("Changed session DC%s address to %s:%s", dc_id, server_address, port)
+        else:
+            log.info("Session DC%s address is already %s:%s", dc_id, server_address, port)
+
+    @property
+    def server_time(self) -> float:
+        return self._last_sync_time + (time.monotonic() - self._last_monotonic)
+
+    def _set_server_time(self, msg_id: int):
+        if self._is_server_time_synced:
+            return
+
+        self._last_sync_time = msg_id / float(2**32)
+        self._last_monotonic = time.monotonic()
+        self._is_server_time_synced = True
+        log.info(f"Time synced: {utils.timestamp_to_datetime(self._last_sync_time)}")
 
     def guess_mime_type(self, filename: Union[str, BytesIO]) -> Optional[str]:
         if isinstance(filename, BytesIO):

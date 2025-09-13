@@ -15,55 +15,43 @@
 #
 #  You should have received a copy of the GNU Lesser General Public License
 #  along with Pyrogram.  If not, see <http://www.gnu.org/licenses/>.
+from typing import List, Union
 
 import pyrogram
-from pyrogram import raw
+from pyrogram import raw, types
 
 
-class ExportFolderLink:
-    async def export_folder_link(
+class ReorderGiftCollections:
+    async def reorder_gift_collections(
         self: "pyrogram.Client",
-        folder_id: int
-    ) -> str:
-        """Export link to a user's folder.
+        owner_id: Union[int, str],
+        collection_ids: List[int]
+    ) -> "types.GiftCollection":
+        """Changes order of gift collections.
 
         .. include:: /_includes/usable-by/users.rst
 
         Parameters:
-            folder_id (``int``):
-                Unique identifier (int) of the target folder.
+            owner_id (``int`` | ``str``):
+                Unique identifier (int) or username (str) of the target chat.
+                For your personal cloud (Saved Messages) you can simply use "me" or "self".
+
+            gift_ids (List of ``int``):
+                New order of gift collections.
 
         Returns:
-            ``str``: On success, a link to the folder as string is returned.
+            ``bool``: On success, True is returned.
 
         Example:
             .. code-block:: python
 
-                # Export folder link
-                await app.export_folder_link(folder_id)
+                await app.reorder_gift_collections("me", [123, 456])
         """
-        folder = await self.get_folders(folder_id)
-
-        if not folder:
-            return
-
-        peers = []
-
-        if folder.included_chats:
-            peers.extend(iter(folder.included_chats))
-
-        if folder.excluded_chats:
-            peers.extend(iter(folder.included_chats))
-
-        if folder.pinned_chats:
-            peers.extend(iter(folder.included_chats))
-
         r = await self.invoke(
-            raw.functions.chatlists.ExportChatlistInvite(
-                chatlist=raw.types.InputChatlistDialogFilter(filter_id=folder_id),
-                title=folder.title,
-                peers=[await self.resolve_peer(i.id) for i in peers],
+            raw.functions.payments.ReorderStarGiftCollections(
+                peer=await self.resolve_peer(owner_id),
+                order=collection_ids
             )
         )
 
-        return r.invite.url
+        return r

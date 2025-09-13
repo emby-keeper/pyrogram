@@ -16,15 +16,16 @@
 #  You should have received a copy of the GNU Lesser General Public License
 #  along with Pyrogram.  If not, see <http://www.gnu.org/licenses/>.
 
+from enum import auto
 
-class SeqNo:
-    def __init__(self):
-        self.content_related_messages_sent = 0
+from .auto_name import AutoName
 
-    def __call__(self, is_content_related: bool) -> int:
-        seq_no = (self.content_related_messages_sent * 2) + (1 if is_content_related else 0)
 
-        if is_content_related:
-            self.content_related_messages_sent += 1
+class SuggestedPostRefundReason(AutoName):
+    """Suggested post refund reason enumeration used in :obj:`~pyrogram.types.SuggestedPostRefunded`."""
 
-        return seq_no
+    POST_DELETED = auto()
+    """The post was deleted within 24 hours of being posted or removed from scheduled messages without being posted"""
+
+    PAYMENT_REFUNDED = auto()
+    """The post was refunded, because the payment for the post was refunded."""

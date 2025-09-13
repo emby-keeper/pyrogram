@@ -29,6 +29,7 @@ from .chat import Chat
 from .chat_admin_with_invite_links import ChatAdminWithInviteLinks
 from .chat_color import ChatColor
 from .chat_event import ChatEvent
+from .folder_invite_link import FolderInviteLink
 from .chat_event_filter import ChatEventFilter
 from .chat_invite_link import ChatInviteLink
 from .chat_join_request import ChatJoinRequest
@@ -53,6 +54,7 @@ from .phone_call_started import PhoneCallStarted
 from .privacy_rule import PrivacyRule
 from .restriction import Restriction
 from .stories_stealth_mode import StoriesStealthMode
+from .user_rating import UserRating
 from .user import User
 from .username import Username
 from .verification_status import VerificationStatus
@@ -81,7 +83,9 @@ __all__ = [
     "VerificationStatus",
     "Restriction",
     "StoriesStealthMode",
+    "UserRating",
     "ChatEvent",
+    "FolderInviteLink",
     "ChatEventFilter",
     "ChatInviteLink",
     "InviteLinkImporter",

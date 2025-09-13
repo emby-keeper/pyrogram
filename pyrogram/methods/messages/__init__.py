@@ -18,8 +18,10 @@
 
 from .add_checklist_tasks import AddChecklistTasks
 from .add_to_gifs import AddToGifs
+from .approve_suggested_post import ApproveSuggestedPost
 from .copy_media_group import CopyMediaGroup
 from .copy_message import CopyMessage
+from .decline_suggested_post import DeclineSuggestedPost
 from .delete_chat_history import DeleteChatHistory
 from .delete_direct_messages_chat_topic_history import DeleteDirectMessagesChatTopicHistory
 from .delete_messages import DeleteMessages
@@ -47,6 +49,8 @@ from .get_media_group import GetMediaGroup
 from .get_messages import GetMessages
 from .get_scheduled_messages import GetScheduledMessages
 from .get_stickers import GetStickers
+from .get_web_app_link_url import GetWebAppLinkUrl
+from .get_web_app_url import GetWebAppUrl
 from .mark_checklist_tasks_as_done import MarkChecklistTasksAsDone
 from .read_chat_history import ReadChatHistory
 from .read_mentions import ReadMentions
@@ -94,6 +98,8 @@ from .vote_poll import VotePoll
 class Messages(
     AddChecklistTasks,
     AddToGifs,
+    ApproveSuggestedPost,
+    DeclineSuggestedPost,
     DeleteMessages,
     EditMessageCaption,
     EditMessageChecklist,
@@ -107,6 +113,8 @@ class Messages(
     GetMessages,
     GetScheduledMessages,
     GetStickers,
+    GetWebAppLinkUrl,
+    GetWebAppUrl,
     MarkChecklistTasksAsDone,
     SendAudio,
     SendChatAction,

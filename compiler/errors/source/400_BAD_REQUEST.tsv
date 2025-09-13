@@ -153,6 +153,7 @@ DC_ID_INVALID	The provided dc_id is invalid.
 DH_G_A_INVALID	The g_a parameter is invalid.
 DOCUMENT_INVALID	The specified document is invalid.
 EFFECT_ID_INVALID	The specified effect id is invalid.
+EMAIL_CODE_EMPTY	The email code is empty.
 EMAIL_HASH_EXPIRED	The email hash expired and cannot be used to verify it.
 EMAIL_INVALID	The specified email is invalid.
 EMAIL_NOT_ALLOWED	The specified email cannot be used to complete the operation.
@@ -182,6 +183,7 @@ EXTENDED_MEDIA_AMOUNT_INVALID	The specified `stars_amount` of the passed [inputM
 EXTENDED_MEDIA_PEER_INVALID	The specified chat type is invalid.
 EXTENDED_MEDIA_TYPE_INVALID	The specified extended media type is unsupported.
 EXTERNAL_URL_INVALID	The external media URL is invalid.
+FEATURE_DISABLED	This feature is disabled.
 FIELD_NAME_EMPTY	The field with the name FIELD_NAME is missing.
 FIELD_NAME_INVALID	The field with the name FIELD_NAME is invalid.
 FILE_CONTENT_TYPE_INVALID	File content-type is invalid.
@@ -207,6 +209,7 @@ FILE_TITLE_EMPTY	An empty file title was specified.
 FILE_TOKEN_INVALID	The master DC did not accept the `file_token` (e.g., the token has expired). Continue downloading the file from the master DC using upload.getFile.
 FILTER_ID_INVALID	The specified filter ID is invalid.
 FILTER_INCLUDE_EMPTY	The list of include_peers of the folder is empty.
+FILTER_INCLUDE_TOO_MUCH	You can't add more chats to this folder.
 FILTER_NOT_SUPPORTED	The specified filter cannot be used in this context.
 FILTER_TITLE_EMPTY	The title field of the filter is empty.
 FIRSTNAME_INVALID	The first name is invalid.
@@ -276,6 +279,7 @@ INVITE_REVOKED_MISSING	The action required a chat invite link to be revoked firs
 INVITE_SLUG_EMPTY	The specified invite slug is empty.
 INVITE_SLUG_EXPIRED	The specified invite slug has expired.
 INVITE_SLUG_INVALID	The specified invite slug is invalid.
+INVOICE_INVALID	The specified invoice is invalid.
 INVOICE_PAYLOAD_INVALID	The specified invoice payload is invalid.
 JOIN_AS_PEER_INVALID	The specified peer cannot be used to join a group call.
 LANGUAGE_INVALID	The specified lang_code is invalid.
@@ -321,6 +325,7 @@ MSG_ID_INVALID	The message ID used in the peer was invalid.
 MSG_TOO_OLD	chat_read_mark_expire_period have passed since the message was sent, read receipts were deleted.
 MSG_VOICE_MISSING	The message does not contain a voice message.
 MSG_WAIT_FAILED	A waiting call returned an error.
+MTPROTO_CLUSTER_INVALID	The MTProto cluster is invalid.
 MULTI_MEDIA_TOO_LONG	The album contains too many items.
 NEW_SALT_INVALID	The new salt is invalid.
 NEW_SETTINGS_EMPTY	No password is set on the current account, and no new password was specified in `new_settings`.
@@ -483,6 +488,7 @@ STARGIFT_MESSAGE_INVALID	The provided message for this gift is invalid.
 STARGIFT_NOT_FOUND	The specified star gift was not found.
 STARGIFT_NOT_OWNER	You can't control this gift because it doesn't belong to you.
 STARGIFT_OWNER_INVALID	The specified gift owner is invalid.
+STARGIFT_RESELL_CURRENCY_NOT_ALLOWED	The currency provided for gift resell is not allowed.
 STARGIFT_RESELL_NOT_ALLOWED	You can't buy this gift. Someone else may have already bought it or this gift is not for sale.
 STARGIFT_RESELL_TOO_EARLY_X	A wait of {value} seconds is required to resell this gift.
 STARGIFT_SLUG_INVALID	The provided star gift slug is invalid (must match the format CollectionName-123).
@@ -530,6 +536,7 @@ STORY_ID_EMPTY	You specified no story IDs.
 STORY_ID_INVALID	The specified story ID is invalid.
 STORY_NOT_MODIFIED	The new story information you passed is equal to the previous story information, thus it wasn't modified.
 STORY_PERIOD_INVALID	The specified story period is invalid for this account.
+STORY_PUBLIC_MISSING	The story you are trying to access or manipulate is not publicly available.
 STORY_SEND_FLOOD_MONTHLY_X	You've hit the monthly story limit as specified by the [`stories_sent_monthly_limit_*` client configuration parameters](https://core.telegram.org/api/config#stories-sent-monthly-limit-default): wait {value} seconds before posting a new story.
 STORY_SEND_FLOOD_WEEKLY_X	You've hit the weekly story limit as specified by the [`stories_sent_weekly_limit_*` client configuration parameters](https://core.telegram.org/api/config#stories-sent-weekly-limit-default): wait {value} seconds before posting a new story.
 SUBSCRIPTION_EXPORT_MISSING	You cannot send a [bot subscription invoice](https://core.telegram.org/api/subscriptions#bot-subscriptions) directly, you may only create invoice links using [payments.exportInvoice](https://core.telegram.org/method/payments.exportInvoice).
@@ -607,6 +614,7 @@ USER_KICKED	This user was kicked from this chat.
 USER_NOT_MUTUAL_CONTACT	The provided user is not a mutual contact.
 USER_NOT_PARTICIPANT	You're not a member of this chat.
 USER_PUBLIC_MISSING	The accounts username is missing.
+USER_RIGHTS_MISSING	The user rights is missing.
 USER_VOLUME_INVALID	The specified user volume is invalid.
 VENUE_ID_INVALID	The specified venue ID is invalid.
 VIDEO_CONTENT_TYPE_INVALID	The video content type is invalid (i.e.: not streamable).

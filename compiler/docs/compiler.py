@@ -260,6 +260,8 @@ def pyrogram_api():
             get_messages
             get_scheduled_messages
             get_stickers
+            get_web_app_link_url
+            get_web_app_url
             mark_checklist_tasks_as_done
             get_media_group
             get_chat_history
@@ -294,6 +296,8 @@ def pyrogram_api():
             send_paid_media
             send_paid_reaction
             add_to_gifs
+            approve_suggested_post
+            decline_suggested_post
             add_checklist_tasks
         """,
         chats="""
@@ -332,6 +336,8 @@ def pyrogram_api():
             create_group
             create_supergroup
             delete_channel
+            delete_folder_invite_link
+            get_folder_invite_links
             delete_supergroup
             delete_user_history
             set_slow_mode
@@ -350,7 +356,8 @@ def pyrogram_api():
             update_color
             update_chat_notifications
             toggle_forum_topics
-            export_folder_link
+            create_folder_invite_link
+            get_chats_for_folder_invite_link
             get_folders
             create_folder
             delete_folder
@@ -420,15 +427,27 @@ def pyrogram_api():
         payments="""
         Payments
             apply_gift_code
+            buy_gift_upgrade
             check_gift_code
             convert_gift_to_stars
             get_available_gifts
             get_chat_gifts
             get_chat_gifts_count
+            add_collection_gifts
+            create_gift_collection
+            delete_gift_collection
+            get_gift_collections
+            remove_collection_gifts
+            reorder_collection_gifts
+            reorder_gift_collections
+            set_gift_collection_name
             get_gift_upgrade_preview
             get_payment_form
             get_stars_balance
+            get_ton_balance
+            get_upgraded_gift_value_info
             get_upgraded_gift
+            gift_premium_with_stars
             hide_gift
             search_gifts_for_resale
             send_gift
@@ -513,6 +532,7 @@ def pyrogram_api():
         advanced="""
         Advanced
             invoke
+            recover_gaps
             resolve_peer
             save_file
         """,
@@ -553,6 +573,7 @@ def pyrogram_api():
             set_privacy
             get_privacy
             set_global_privacy_settings
+            set_inactive_session_ttl
             get_global_privacy_settings
         """
     )
@@ -626,6 +647,7 @@ def pyrogram_api():
             FoundContacts
             PrivacyRule
             StoriesStealthMode
+            UserRating
             BotVerification
             BusinessBotRights
             ChatSettings
@@ -698,7 +720,13 @@ def pyrogram_api():
             GiveawayWinners
             Invoice
             LinkPreviewOptions
+            GiftCollection
             GiftCode
+            GiftPurchaseLimit
+            GiftResaleParameters
+            GiftResalePrice
+            GiftResalePriceStar
+            GiftResalePriceTon
             GiftUpgradePreview
             CheckedGiftCode
             ChecklistTask
@@ -708,6 +736,16 @@ def pyrogram_api():
             RefundedPayment
             ReplyParameters
             SuccessfulPayment
+            SuggestedPostParameters
+            SuggestedPostInfo
+            SuggestedPostPaid
+            SuggestedPostPrice
+            SuggestedPostPriceStar
+            SuggestedPostPriceTon
+            SuggestedPostApprovalFailed
+            SuggestedPostApproved
+            SuggestedPostDeclined
+            SuggestedPostRefunded
             TextQuote
             PaidMediaInfo
             PaidMediaPreview
@@ -723,6 +761,7 @@ def pyrogram_api():
             ChatBoost
             ContactRegistered
             ScreenshotTaken
+            StarAmount
             WriteAccessAllowed
             GiftAttribute
             StoryView
@@ -730,7 +769,16 @@ def pyrogram_api():
             ChatBackground
             ChatTheme
             GiftedStars
+            GiftedTon
+            UpgradedGiftValueInfo
             UpgradedGiftAttributeId
+            UpgradedGiftAttributeIdModel
+            UpgradedGiftAttributeIdSymbol
+            UpgradedGiftAttributeIdBackdrop
+            InputChatPhoto
+            InputChatPhotoPrevious
+            InputChatPhotoStatic
+            InputChatPhotoAnimation
         """,
         bot_keyboards="""
         Bot keyboards
@@ -1009,7 +1057,7 @@ def pyrogram_api():
             Folder.update_color
             Folder.pin_chat
             Folder.remove_chat
-            Folder.export_link
+            Folder.create_invite_link
         """,
         active_session="""
         ActiveSession
@@ -1024,6 +1072,7 @@ def pyrogram_api():
             Gift.transfer
             Gift.wear
             Gift.buy
+            Gift.send
         """,
         animation="""
         Animation
@@ -1097,6 +1146,8 @@ def pyrogram_api():
             PaymentFormType
             StickerType
             MaskPointType
+            SuggestedPostRefundReason
+            SuggestedPostState
         """,
     )
 

@@ -33,7 +33,7 @@ from .contact_registered import ContactRegistered
 from .contact import Contact
 from .dice import Dice
 from .direct_message_price_changed import DirectMessagePriceChanged
-from .direct_topic import DirectMessagesTopic
+from .direct_messages_topic import DirectMessagesTopic
 from .document import Document
 from .external_reply_info import ExternalReplyInfo
 from .fact_check import FactCheck
@@ -46,7 +46,11 @@ from .forum_topic_reopened import ForumTopicReopened
 from .game import Game
 from .general_forum_topic_hidden import GeneralForumTopicHidden
 from .general_forum_topic_unhidden import GeneralForumTopicUnhidden
+from .gift_collection import GiftCollection
 from .gift_code import GiftCode
+from .gift_purchase_limit import GiftPurchaseLimit
+from .gift_resale_parameters import GiftResaleParameters
+from .gift_resale_price import GiftResalePrice, GiftResalePriceStar, GiftResalePriceTon
 from .gift_upgrade_preview import GiftUpgradePreview
 from .invoice import Invoice
 from .link_preview_options import LinkPreviewOptions
@@ -87,21 +91,32 @@ from .reply_parameters import ReplyParameters
 from .restriction_reason import RestrictionReason
 from .saved_credentials import SavedCredentials
 from .screenshot_taken import ScreenshotTaken
+from .star_amount import StarAmount
 from .gift_attribute import GiftAttribute
 from .gift import Gift
 from .gifted_premium import GiftedPremium
 from .gifted_stars import GiftedStars
+from .gifted_ton import GiftedTon
 from .sticker import Sticker
 from .story_view import StoryView
 from .story import Story
 from .stripped_thumbnail import StrippedThumbnail
 from .successful_payment import SuccessfulPayment
+from .suggested_post_approval_failed import SuggestedPostApprovalFailed
+from .suggested_post_approved import SuggestedPostApproved
+from .suggested_post_declined import SuggestedPostDeclined
+from .suggested_post_info import SuggestedPostInfo
+from .suggested_post_paid import SuggestedPostPaid
+from .suggested_post_parameters import SuggestedPostParameters
+from .suggested_post_refunded import SuggestedPostRefunded
+from .suggested_post_price import SuggestedPostPrice, SuggestedPostPriceStar, SuggestedPostPriceTon
 from .text_quote import TextQuote
 from .thumbnail import Thumbnail
 from .upgraded_gift_attribute_id_backdrop import UpgradedGiftAttributeIdBackdrop
 from .upgraded_gift_attribute_id_model import UpgradedGiftAttributeIdModel
 from .upgraded_gift_attribute_id_symbol import UpgradedGiftAttributeIdSymbol
 from .upgraded_gift_attribute_id import UpgradedGiftAttributeId
+from .upgraded_gift_value_info import UpgradedGiftValueInfo
 from .venue import Venue
 from .video import Video
 from .video_note import VideoNote
@@ -141,7 +156,13 @@ __all__ = [
     "Game",
     "GeneralForumTopicHidden",
     "GeneralForumTopicUnhidden",
+    "GiftCollection",
     "GiftCode",
+    "GiftPurchaseLimit",
+    "GiftResaleParameters",
+    "GiftResalePrice",
+    "GiftResalePriceStar",
+    "GiftResalePriceTon",
     "GiftUpgradePreview",
     "Giveaway",
     "InputChecklistTask",
@@ -182,21 +203,34 @@ __all__ = [
     "RestrictionReason",
     "SavedCredentials",
     "ScreenshotTaken",
+    "StarAmount",
     "GiftAttribute",
     "Gift",
     "GiftedPremium",
     "GiftedStars",
+    "GiftedTon",
     "Sticker",
     "StoryView",
     "Story",
     "StrippedThumbnail",
     "SuccessfulPayment",
+    "SuggestedPostInfo",
+    "SuggestedPostApprovalFailed",
+    "SuggestedPostApproved",
+    "SuggestedPostDeclined",
+    "SuggestedPostRefunded",
+    "SuggestedPostPaid",
+    "SuggestedPostParameters",
+    "SuggestedPostPrice",
+    "SuggestedPostPriceStar",
+    "SuggestedPostPriceTon",
     "TextQuote",
     "Thumbnail",
     "UpgradedGiftAttributeIdBackdrop",
     "UpgradedGiftAttributeIdModel",
     "UpgradedGiftAttributeIdSymbol",
     "UpgradedGiftAttributeId",
+    "UpgradedGiftValueInfo",
     "Venue",
     "Video",
     "VideoNote",
