@@ -546,15 +546,12 @@ class Session:
 
         query_name = ".".join(inner_query.QUALNAME.split(".")[1:])
 
-        e = None
-        for attempt in range(0, retries + 1):
+        for attempt in range(1, retries + 1):
             try:
                 return await self.send(query, timeout=timeout)
             except (FloodWait, FloodPremiumWait) as e:
-                if attempt == retries:
-                    break
-
                 amount = e.value
+
                 if amount > sleep_threshold >= 0:
                     raise
 
@@ -564,20 +561,16 @@ class Session:
                     amount,
                     query_name,
                 )
-                
+
                 await asyncio.sleep(amount)
             except (OSError, InternalServerError, ServiceUnavailable) as e:
-                if attempt == retries:
-                    break
-
                 log.warning(
                     '[%s] Retrying "%s" due to: %s', attempt, query_name, str(e) or repr(e)
                 )
 
                 await asyncio.sleep(retry_delay)
 
-        last_error = f'{e.__class__.__name__}: {e}' if e else 'Unknown error'
-        raise TimeoutError(f'Failed to invoke "{query_name}" after {retries} retries. Last error: {last_error}')
+        raise TimeoutError(f'Failed to invoke "{query_name}" after {retries} retries')
 
     def __str__(self) -> str:
         return f"Session(dc_id={self.dc_id}, test_mode={self.test_mode}, is_media={self.is_media}, is_cdn={self.is_cdn}, state={self._state.name})"
